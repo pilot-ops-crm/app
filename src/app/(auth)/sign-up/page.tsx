@@ -25,7 +25,7 @@ export default function SignUp() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}`,
         },
       });
 
@@ -72,7 +72,7 @@ export default function SignUp() {
       }
 
       if (result.data.session) {
-        router.push("/dashboard");
+        router.push("/");
       }
     } catch (error: unknown) {
       const errorMessage =

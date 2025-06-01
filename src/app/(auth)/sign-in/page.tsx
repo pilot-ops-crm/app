@@ -20,7 +20,7 @@ export default function SignIn() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard");
+      router.push("/");
     }
   }, [user, loading, router]);
 
@@ -32,7 +32,7 @@ export default function SignIn() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}`,
         },
       });
 
