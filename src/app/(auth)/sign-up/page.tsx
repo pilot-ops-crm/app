@@ -25,7 +25,7 @@ export default function SignUp() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `https://getanalyzr.vercel.app/dashboard`,
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
         },
       });
 
