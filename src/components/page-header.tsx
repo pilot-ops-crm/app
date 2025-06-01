@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { navbarData } from "@/lib/sidebar-data";
 import { SidebarTrigger } from "./ui/sidebar";
 import { Separator } from "./ui/separator";
+import { ModeToggle } from "./mode-toggler";
 
 export function PageHeader() {
   const pathname = usePathname();
@@ -24,6 +25,7 @@ export function PageHeader() {
         />
         <h1 className="text-xl font-medium">{title}</h1>
       </div>
+      <ModeToggle />
     </header>
   );
 }

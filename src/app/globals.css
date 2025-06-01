@@ -28,14 +28,14 @@
   --chart-3: oklch(0.5854 0.2041 277.1173);
   --chart-4: oklch(0.5413 0.2466 293.0090);
   --chart-5: oklch(0.7686 0.1647 70.0804);
-  --sidebar: oklch(0.2077 0.0398 265.7549);
-  --sidebar-foreground: oklch(0.9846 0.0017 247.8389);
+  --sidebar: oklch(0.9846 0.0017 247.8389);
+  --sidebar-foreground: oklch(0.2077 0.0398 265.7549);
   --sidebar-primary: oklch(0.6231 0.1880 259.8145);
   --sidebar-primary-foreground: oklch(1.0000 0 0);
   --sidebar-accent: oklch(0.6231 0.1880 259.8145);
   --sidebar-accent-foreground: oklch(1.0000 0 0);
-  --sidebar-border: oklch(0.3867 0 0);
-  --sidebar-ring: oklch(0.3867 0 0);
+  --sidebar-border: oklch(0.9276 0.0058 264.5313);
+  --sidebar-ring: oklch(0.8690 0.0198 252.8943);
   --radius: 0.5rem;
   --shadow-2xs: 0 0.125rem 0.25rem 0 hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 0.125rem 0.25rem 0 hsl(0 0% 0% / 0.05);

@@ -61,7 +61,7 @@ export function NavUser({ user }: NavUserProps) {
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{displayName}</span>
-                <span className="text-muted/50 truncate text-xs">
+                <span className="text-muted-foreground/70 truncate text-xs">
                   {user?.email}
                 </span>
               </div>
