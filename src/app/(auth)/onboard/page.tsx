@@ -1,11 +1,13 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useOnboardingStore } from "@/stores/onboarding";
-import { Check, Upload } from "lucide-react";
+import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import useUser from "@/hooks/use-user";
 import {
   updateStep1,
@@ -14,7 +16,6 @@ import {
   updateStep4,
   updateStep5,
   completeOnboarding,
-  uploadToneReference,
 } from "@/actions/onboarding";
 import { supabase } from "@/lib/supabase";
 import {
@@ -25,14 +26,71 @@ import {
   StepperTitle,
   StepperTrigger,
 } from "@/components/ui/stepper";
-import { Label } from "@/components/ui/label";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from "@/components/ui/card";
-import { active_platforms_options, business_type_options, current_tracking_options, gender_options, leads_per_month_options, pilot_goal_options, use_case_options } from "@/lib/onboarding-data";
+  active_platforms_options,
+  business_type_options,
+  current_tracking_options,
+  gender_options,
+  leads_per_month_options,
+  pilot_goal_options,
+  use_case_options,
+} from "@/lib/onboarding-data";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CheckboxContainer } from "@/components/ui/checkbox";
+import StepButtons from "@/components/step-buttons";
+
+const step1Schema = z.object({
+  name: z.string().min(1, { message: "Name is required" }),
+  gender: z.string().min(1, { message: "Gender selection is required" }),
+});
+
+const step2Schema = z.object({
+  use_case: z
+    .array(z.string())
+    .min(1, { message: "Please select at least one use case" }),
+  leads_per_month: z.string().min(1, {
+    message: "Please select your expected lead volume",
+  }),
+});
+
+const step3Schema = z.object({
+  active_platforms: z
+    .array(z.string())
+    .min(1, { message: "Please select at least one platform" }),
+});
+
+const step4Schema = z.object({
+  business_type: z
+    .string()
+    .min(1, { message: "Please select your business type" }),
+  pilot_goal: z
+    .array(z.string())
+    .min(1, { message: "Please select at least one goal" }),
+});
+
+const step5Schema = z.object({
+  current_tracking: z
+    .array(z.string())
+    .min(1, { message: "Please select at least one tracking method" }),
+});
+
+type Step1FormValues = z.infer<typeof step1Schema>;
+type Step2FormValues = z.infer<typeof step2Schema>;
+type Step3FormValues = z.infer<typeof step3Schema>;
+type Step4FormValues = z.infer<typeof step4Schema>;
+type Step5FormValues = z.infer<typeof step5Schema>;
 
 const steps = [
   { id: 0, name: "Personal Info" },
@@ -46,8 +104,73 @@ const steps = [
 export default function OnboardPage() {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
-  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const { user, loading } = useUser();
+
+  const {
+    name,
+    setName,
+    email,
+    gender,
+    setGender,
+    use_case,
+    setUseCase,
+    leads_per_month,
+    setLeadsPerMonth,
+    active_platforms,
+    setActivePlatforms,
+    business_type,
+    setBusinessType,
+    pilot_goal,
+    setPilotGoal,
+    current_tracking,
+    setCurrentTracking,
+    setOnboardingComplete,
+  } = useOnboardingStore();
+
+  const step1Form = useForm<Step1FormValues>({
+    resolver: zodResolver(step1Schema),
+    defaultValues: {
+      name: name || "",
+      gender: gender || "",
+    },
+    mode: "onChange",
+  });
+
+  const step2Form = useForm<Step2FormValues>({
+    resolver: zodResolver(step2Schema),
+    defaultValues: {
+      use_case: use_case || [],
+      leads_per_month: leads_per_month || "",
+    },
+    mode: "onChange",
+  });
+
+  const step3Form = useForm<Step3FormValues>({
+    resolver: zodResolver(step3Schema),
+    defaultValues: {
+      active_platforms: active_platforms || [],
+    },
+    mode: "onChange",
+  });
+
+  const step4Form = useForm<Step4FormValues>({
+    resolver: zodResolver(step4Schema),
+    defaultValues: {
+      business_type: business_type || "",
+      pilot_goal: pilot_goal || [],
+    },
+    mode: "onChange",
+  });
+
+  const step5Form = useForm<Step5FormValues>({
+    resolver: zodResolver(step5Schema),
+    defaultValues: {
+      current_tracking: current_tracking || [],
+    },
+    mode: "onChange",
+  });
+
   const [stepValidationState, setStepValidationState] = useState<boolean[]>([
     false,
     false,
@@ -56,42 +179,72 @@ export default function OnboardPage() {
     false,
     true,
   ]);
-  const { user, loading } = useUser();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const {
-    name,
-    setName,
-    email,
-    gender,
-    setGender,
+  useEffect(() => {
+    const subscription = step1Form.watch(() => {
+      const isValid = step1Form.formState.isValid;
+      setStepValidationState((prev) => {
+        const newState = [...prev];
+        newState[0] = isValid;
+        return newState;
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [step1Form]);
 
-    use_case,
-    setUseCase,
-    leads_per_month,
-    setLeadsPerMonth,
-    active_platforms,
-    setActivePlatforms,
+  useEffect(() => {
+    const subscription = step2Form.watch(() => {
+      const isValid = step2Form.formState.isValid;
+      setStepValidationState((prev) => {
+        const newState = [...prev];
+        newState[1] = isValid;
+        return newState;
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [step2Form]);
 
-    business_type,
-    setBusinessType,
-    pilot_goal,
-    setPilotGoal,
-    current_tracking,
-    setCurrentTracking,
-    tone_reference_file,
-    setToneReferenceFile,
+  useEffect(() => {
+    const subscription = step3Form.watch(() => {
+      const isValid = step3Form.formState.isValid;
+      setStepValidationState((prev) => {
+        const newState = [...prev];
+        newState[2] = isValid;
+        return newState;
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [step3Form]);
 
-    setOnboardingComplete,
-  } = useOnboardingStore();
+  useEffect(() => {
+    const subscription = step4Form.watch(() => {
+      const isValid = step4Form.formState.isValid;
+      setStepValidationState((prev) => {
+        const newState = [...prev];
+        newState[3] = isValid;
+        return newState;
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [step4Form]);
+
+  useEffect(() => {
+    const subscription = step5Form.watch(() => {
+      const isValid = step5Form.formState.isValid;
+      setStepValidationState((prev) => {
+        const newState = [...prev];
+        newState[4] = isValid;
+        return newState;
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [step5Form]);
 
   useEffect(() => {
     if (!user || !user.id) return;
 
     const loadUserData = async () => {
       try {
-        console.log("Loading user data for ID:", user.id);
-
         const { data, error } = await supabase
           .from("users")
           .select("*")
@@ -100,16 +253,11 @@ export default function OnboardPage() {
 
         if (error) {
           if (error.code === "PGRST116") {
-            console.log(
-              "No data found for user, will be created on first save"
-            );
             return;
           }
           console.error("Error fetching user data:", error);
           return;
         }
-
-        console.log("User data loaded:", data);
 
         if (data) {
           const userData = data as Record<
@@ -117,64 +265,62 @@ export default function OnboardPage() {
             string | string[] | boolean | null
           >;
 
-          if (userData.name && !name) {
-            console.log("Setting name from DB:", userData.name);
+          if (userData.name) {
             setName(userData.name as string);
+            step1Form.setValue("name", userData.name as string);
           }
 
-          if (userData.gender && !gender) {
-            console.log("Setting gender from DB:", userData.gender);
+          if (userData.gender) {
             setGender(userData.gender as string);
+            step1Form.setValue("gender", userData.gender as string);
           }
 
-          if (userData.use_case && use_case.length === 0) {
-            console.log("Setting use_case from DB:", userData.use_case);
+          if (userData.use_case && Array.isArray(userData.use_case)) {
             setUseCase(userData.use_case as string[]);
+            step2Form.setValue("use_case", userData.use_case as string[]);
           }
 
-          if (userData.leads_per_month && !leads_per_month) {
-            console.log(
-              "Setting leads_per_month from DB:",
-              userData.leads_per_month
-            );
+          if (userData.leads_per_month) {
             setLeadsPerMonth(userData.leads_per_month as string);
+            step2Form.setValue(
+              "leads_per_month",
+              userData.leads_per_month as string
+            );
           }
 
-          if (userData.active_platforms && active_platforms.length === 0) {
-            console.log(
-              "Setting active_platforms from DB:",
-              userData.active_platforms
-            );
+          if (
+            userData.active_platforms &&
+            Array.isArray(userData.active_platforms)
+          ) {
             setActivePlatforms(userData.active_platforms as string[]);
+            step3Form.setValue(
+              "active_platforms",
+              userData.active_platforms as string[]
+            );
           }
 
-          if (userData.business_type && !business_type) {
-            console.log(
-              "Setting business_type from DB:",
-              userData.business_type
-            );
+          if (userData.business_type) {
             setBusinessType(userData.business_type as string);
+            step4Form.setValue(
+              "business_type",
+              userData.business_type as string
+            );
           }
 
-          if (userData.pilot_goal && pilot_goal.length === 0) {
-            console.log("Setting pilot_goal from DB:", userData.pilot_goal);
+          if (userData.pilot_goal && Array.isArray(userData.pilot_goal)) {
             setPilotGoal(userData.pilot_goal as string[]);
+            step4Form.setValue("pilot_goal", userData.pilot_goal as string[]);
           }
 
-          if (userData.current_tracking && current_tracking.length === 0) {
-            console.log(
-              "Setting current_tracking from DB:",
-              userData.current_tracking
-            );
+          if (
+            userData.current_tracking &&
+            Array.isArray(userData.current_tracking)
+          ) {
             setCurrentTracking(userData.current_tracking as string[]);
-          }
-
-          if (userData.tone_reference_file && !tone_reference_file) {
-            console.log(
-              "Setting tone_reference_file from DB:",
-              userData.tone_reference_file
+            step5Form.setValue(
+              "current_tracking",
+              userData.current_tracking as string[]
             );
-            setToneReferenceFile(userData.tone_reference_file as string);
           }
         }
       } catch (error) {
@@ -185,234 +331,122 @@ export default function OnboardPage() {
     loadUserData();
   }, [
     user,
-    email,
-    name,
-    setName,
-    gender,
-    setGender,
-    use_case,
-    setUseCase,
-    leads_per_month,
-    setLeadsPerMonth,
-    active_platforms,
+    step1Form,
+    step2Form,
+    step3Form,
+    step4Form,
+    step5Form,
     setActivePlatforms,
-    business_type,
     setBusinessType,
-    pilot_goal,
-    setPilotGoal,
-    current_tracking,
     setCurrentTracking,
-    tone_reference_file,
-    setToneReferenceFile,
+    setGender,
+    setLeadsPerMonth,
+    setName,
+    setPilotGoal,
+    setUseCase,
   ]);
 
-  const validateStep = useCallback(
-    (step: number): boolean => {
-      const newErrors: { [key: string]: string } = {};
-      let isValid = true;
+  const handleStep1Submit = async (values: Step1FormValues) => {
+    if (!user?.id) return;
 
-      switch (step) {
-        case 0:
-          if (!name) {
-            newErrors.name = "Name is required";
-            isValid = false;
-          }
+    setIsLoading(true);
+    try {
+      const result = await updateStep1(user.id.toString(), values);
 
-          if (!gender) {
-            newErrors.gender = "Gender selection is required";
-            isValid = false;
-          }
-          break;
-
-        case 1:
-          if (use_case.length === 0) {
-            newErrors.use_case = "Please select at least one use case";
-            isValid = false;
-          }
-
-          if (!leads_per_month) {
-            newErrors.leads_per_month =
-              "Please select your expected lead volume";
-            isValid = false;
-          }
-          break;
-
-        case 2:
-          if (active_platforms.length === 0) {
-            newErrors.active_platforms = "Please select at least one platform";
-            isValid = false;
-          }
-          break;
-
-        case 3:
-          if (!business_type) {
-            newErrors.business_type = "Please select your business type";
-            isValid = false;
-          }
-
-          if (pilot_goal.length === 0) {
-            newErrors.pilot_goal = "Please select at least one goal";
-            isValid = false;
-          }
-          break;
-
-        case 4:
-          if (current_tracking.length === 0) {
-            newErrors.current_tracking =
-              "Please select at least one tracking method";
-            isValid = false;
-          }
-          break;
-
-        case 5:
-          isValid = true;
-          break;
+      if (result.success) {
+        setName(values.name);
+        setGender(values.gender);
+        setActiveStep((prev) => prev + 1);
+      } else {
+        console.error("Failed to update step 1:", result.error);
+        alert(`Failed to save: ${result.error}`);
       }
-
-      setErrors(newErrors);
-      return isValid;
-    },
-    [
-      name,
-      gender,
-      use_case,
-      leads_per_month,
-      active_platforms,
-      business_type,
-      pilot_goal,
-      current_tracking,
-    ]
-  );
-
-  const updateValidationState = useCallback(
-    (step: number, isValid: boolean) => {
-    setStepValidationState((prev) => {
-      const newState = [...prev];
-      newState[step] = isValid;
-      return newState;
-    });
-    },
-    []
-  );
-
-  useEffect(() => {
-    if (activeStep === 0) {
-    const isValid = validateStep(0);
-    updateValidationState(0, isValid);
+    } catch (error) {
+      console.error("Error updating step 1:", error);
+      alert(`An error occurred: ${(error as Error).message}`);
+    } finally {
+      setIsLoading(false);
     }
-  }, [name, gender, validateStep, updateValidationState, activeStep]);
+  };
 
-  useEffect(() => {
-    if (activeStep === 1) {
-    const isValid = validateStep(1);
-    updateValidationState(1, isValid);
-    }
-  }, [
-    use_case,
-    leads_per_month,
-    validateStep,
-    updateValidationState,
-    activeStep,
-  ]);
+  const handleStep2Submit = async (values: Step2FormValues) => {
+    if (!user?.id) return;
 
-  useEffect(() => {
-    if (activeStep === 2) {
-      const isValid = validateStep(2);
-      updateValidationState(2, isValid);
-    }
-  }, [
-    active_platforms,
-    validateStep,
-    updateValidationState,
-    activeStep,
-  ]);
+    setIsLoading(true);
+    try {
+      const result = await updateStep2(user.id.toString(), values);
 
-  useEffect(() => {
-    if (activeStep === 3) {
-      const isValid = validateStep(3);
-      updateValidationState(3, isValid);
-    }
-  }, [
-    business_type,
-    pilot_goal,
-    validateStep,
-    updateValidationState,
-    activeStep,
-  ]);
-
-  useEffect(() => {
-    if (activeStep === 4) {
-      const isValid = validateStep(4);
-      updateValidationState(4, isValid);
-    }
-  }, [
-    current_tracking,
-    validateStep,
-    updateValidationState,
-    activeStep,
-  ]);
-
-  const handleNext = async () => {
-    if (!user?.id) {
-      return;
-    }
-
-    const isValid = validateStep(activeStep);
-    updateValidationState(activeStep, isValid);
-
-    if (isValid && activeStep < steps.length - 1) {
-      setIsLoading(true);
-
-      try {
-        let result;
-        switch (activeStep) {
-          case 0:
-            result = await updateStep1(user.id.toString(), {
-              name,
-              gender,
-            });
-            break;
-          case 1:
-            result = await updateStep2(user.id.toString(), {
-              use_case,
-              leads_per_month,
-            });
-            break;
-          case 2:
-            result = await updateStep3(user.id.toString(), {
-              active_platforms,
-            });
-            break;
-          case 3:
-            result = await updateStep4(user.id.toString(), {
-              business_type,
-              pilot_goal,
-            });
-            break;
-          case 4:
-            result = await updateStep5(user.id.toString(), {
-              current_tracking,
-              tone_reference_file,
-            });
-            break;
-        }
-
-        if (!result?.success) {
-          throw new Error(result?.error || "Unknown error occurred");
-        }
-
-        setActiveStep(activeStep + 1);
-      } catch (error) {
-        console.error("Error in handleNext:", error);
-      } finally {
-        setIsLoading(false);
+      if (result.success) {
+        setUseCase(values.use_case);
+        setLeadsPerMonth(values.leads_per_month);
+        setActiveStep((prev) => prev + 1);
+      } else {
+        console.error("Failed to update step 2:", result.error);
+        alert(`Failed to save: ${result.error}`);
       }
+    } catch (error) {
+      console.error("Error updating step 2:", error);
+      alert(`An error occurred: ${(error as Error).message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStep3Submit = async (values: Step3FormValues) => {
+    if (!user?.id) return;
+
+    setIsLoading(true);
+    try {
+      const result = await updateStep3(user.id.toString(), values);
+      if (result.success) {
+        setActivePlatforms(values.active_platforms);
+        setActiveStep((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error updating step 3:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStep4Submit = async (values: Step4FormValues) => {
+    if (!user?.id) return;
+
+    setIsLoading(true);
+    try {
+      const result = await updateStep4(user.id.toString(), values);
+      if (result.success) {
+        setBusinessType(values.business_type);
+        setPilotGoal(values.pilot_goal);
+        setActiveStep((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error updating step 4:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStep5Submit = async (values: Step5FormValues) => {
+    if (!user?.id) return;
+
+    setIsLoading(true);
+    try {
+      const result = await updateStep5(user.id.toString(), values);
+      if (result.success) {
+        setCurrentTracking(values.current_tracking);
+        setActiveStep((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error updating step 5:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleBack = () => {
     if (activeStep > 0) {
-      setActiveStep(activeStep - 1);
+      setActiveStep((prev) => prev - 1);
     }
   };
 
@@ -422,56 +456,15 @@ export default function OnboardPage() {
     setIsLoading(true);
     try {
       const result = await completeOnboarding(user.id.toString());
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to complete onboarding");
+      if (result.success) {
+        setOnboardingComplete(true);
+        router.push("/");
       }
-
-      setOnboardingComplete(true);
-      router.push("/");
     } catch (error) {
-      console.error("Error in handleComplete:", error);
+      console.error("Error completing onboarding:", error);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user?.id) return;
-
-    setIsLoading(true);
-    try {
-      const result = await uploadToneReference(user.id.toString(), file);
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to upload file");
-      }
-
-      if (result.filePath) {
-        setToneReferenceFile(result.filePath);
-      }
-    } catch (error) {
-      console.error("Error in handleFileUpload:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleCheckbox = (
-    array: string[],
-    value: string,
-    setter: (value: string[]) => void
-  ) => {
-    if (array.includes(value)) {
-      setter(array.filter((item) => item !== value));
-    } else {
-      setter([...array, value]);
-    }
-  };
-
-  const selectRadio = (value: string, setter: (value: string) => void) => {
-    setter(value);
   };
 
   if (loading) {
@@ -500,12 +493,11 @@ export default function OnboardPage() {
             onValueChange={(newStep) => {
               if (newStep < activeStep) {
                 setActiveStep(newStep);
-                        return;
-                      }
+                return;
+              }
 
               if (newStep === activeStep + 1) {
-                      const isValid = validateStep(activeStep);
-                      updateValidationState(activeStep, isValid);
+                const isValid = stepValidationState[activeStep];
                 if (isValid) {
                   setActiveStep(newStep);
                 }
@@ -529,7 +521,7 @@ export default function OnboardPage() {
                   <StepperIndicator />
                   <div className="space-y-0.5 px-2">
                     <StepperTitle>{step.name}</StepperTitle>
-                </div>
+                  </div>
                 </StepperTrigger>
                 {index < steps.length - 1 && (
                   <StepperSeparator className="absolute inset-x-0 left-[calc(50%+0.75rem+0.750rem)] top-6 -order-1 m-0 -translate-y-1/2 group-data-[orientation=horizontal]/stepper:w-[calc(100%-1.5rem-0.25rem)] group-data-[orientation=horizontal]/stepper:flex-none" />
@@ -540,456 +532,462 @@ export default function OnboardPage() {
 
           <div className="border border-border p-4 sm:p-8 rounded-xl shadow-sm">
             {activeStep === 0 && (
-              <div className="space-y-6">
-                <h2 className="text-xl sm:text-2xl font-semibold">
-                  Personal Information
-                </h2>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name-input" className="text-sm font-medium">
-                      Your name
-                    </Label>
-                    <Input
-                      id="name-input"
-                      type="text"
-                      placeholder="Enter your full name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className={`h-12 text-base ${
-                        errors.name ? "border-red-500" : ""
-                      }`}
-                    />
-                    {errors.name && (
-                      <p className="text-red-500 text-sm">{errors.name}</p>
-                    )}
-                  </div>
+              <Form {...step1Form}>
+                <form
+                  onSubmit={step1Form.handleSubmit(handleStep1Submit)}
+                  className="space-y-6"
+                >
+                  <h2 className="text-xl sm:text-2xl font-semibold">
+                    Personal Information
+                  </h2>
 
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="email-input"
-                      className="text-sm font-medium"
-                    >
-                      Your email
-                    </Label>
-                    <Input
-                      id="email-input"
-                      type="email"
-                      placeholder="Enter your email address"
-                      value={email}
-                      disabled
-                      className={`h-12 text-base ${
-                        errors.email ? "border-red-500" : ""
-                      }`}
-                    />
-                    {errors.email && (
-                      <p className="text-red-500 text-sm">{errors.email}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Your gender</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {gender_options.map(
-                        (option) => (
-                          <div
-                            key={option.toLowerCase()}
-                            onClick={() =>
-                              selectRadio(option.toLowerCase(), setGender)
-                            }
-                            className={`border rounded-lg p-4 cursor-pointer transition-all ${
-                              gender === option.toLowerCase()
-                                ? "border-primary bg-primary/10"
-                                : "border-border hover:border-muted-foreground"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-4 h-4 rounded-full border ${
-                                  gender === option.toLowerCase()
-                                    ? "border-4 border-primary"
-                                    : "border border-muted-foreground"
-                                }`}
-                              ></div>
-                              <span>{option}</span>
-                          </div>
-                          </div>
-                        )
+                  <div className="space-y-4">
+                    <FormField
+                      control={step1Form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel htmlFor="name-input">Your name</FormLabel>
+                          <FormControl>
+                            <Input
+                              id="name-input"
+                              placeholder="Enter your full name"
+                              className="h-12 text-base"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
+                    />
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="email-input"
+                        className="text-sm font-medium"
+                      >
+                        Your email
+                      </Label>
+                      <Input
+                        id="email-input"
+                        type="email"
+                        placeholder="Enter your email address"
+                        value={email}
+                        disabled
+                        className="h-12 text-base"
+                      />
                     </div>
-                    {errors.gender && (
-                      <p className="text-red-500 text-sm">{errors.gender}</p>
-                    )}
+
+                    <FormField
+                      control={step1Form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel>Your gender</FormLabel>
+                          <FormControl>
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              value={field.value}
+                              className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+                            >
+                              {gender_options.map((option) => (
+                                <FormItem
+                                  key={option.toLowerCase()}
+                                  className="flex items-center space-x-1 space-y-0"
+                                >
+                                  <FormControl>
+                                    <RadioGroupItem
+                                      value={option.toLowerCase()}
+                                      id={`gender-${option.toLowerCase()}`}
+                                      className="sr-only"
+                                    />
+                                  </FormControl>
+                                  <FormLabel
+                                    htmlFor={`gender-${option.toLowerCase()}`}
+                                    className={`border rounded-lg p-4 w-full flex items-center gap-2 cursor-pointer transition-all ${
+                                      field.value === option.toLowerCase()
+                                        ? "border-primary bg-primary/10"
+                                        : "border-border hover:border-muted-foreground"
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-4 h-4 rounded-full border ${
+                                        field.value === option.toLowerCase()
+                                          ? "border-4 border-primary"
+                                          : "border border-muted-foreground"
+                                      }`}
+                                    ></div>
+                                    <span>{option}</span>
+                                  </FormLabel>
+                                </FormItem>
+                              ))}
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                </div>
-              </div>
+
+                  <StepButtons showBack={false} isLoading={isLoading} />
+                </form>
+              </Form>
             )}
 
             {activeStep === 1 && (
-              <div className="space-y-6">
-                <h2 className="text-xl sm:text-2xl font-semibold">
-                  Pilot Usage
-                </h2>
+              <Form {...step2Form}>
+                <form
+                  onSubmit={step2Form.handleSubmit(handleStep2Submit)}
+                  className="space-y-6"
+                >
+                  <h2 className="text-xl sm:text-2xl font-semibold">
+                    Pilot Usage
+                  </h2>
 
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">
-                    What will you use Pilot for?
-                  </p>
-                  <div className="space-y-2">
-                    {use_case_options.map((option) => (
-                      <div
-                        key={option.toLowerCase().replace(/\s+/g, "_")}
-                        onClick={() =>
-                          toggleCheckbox(
-                            use_case,
-                            option.toLowerCase().replace(/\s+/g, "_"),
-                            setUseCase
-                          )
-                        }
-                        className={`border rounded-lg p-3 cursor-pointer flex items-center gap-3 transition-all ${
-                          use_case.includes(
-                            option.toLowerCase().replace(/\s+/g, "_")
-                          )
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-muted-foreground"
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 flex items-center justify-center rounded border ${
-                            use_case.includes(
-                              option.toLowerCase().replace(/\s+/g, "_")
-                            )
-                              ? "bg-primary border-primary"
-                              : "border-muted-foreground"
-                          }`}
-                        >
-                          {use_case.includes(
-                            option.toLowerCase().replace(/\s+/g, "_")
-                          ) && <Check className="w-3 h-3 text-white" />}
+                  <FormField
+                    control={step2Form.control}
+                    name="use_case"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>What will you use Pilot for?</FormLabel>
+                        <div className="space-y-2">
+                          {use_case_options.map((option) => {
+                            const value = option
+                              .toLowerCase()
+                              .replace(/\s+/g, "_");
+                            return (
+                              <CheckboxContainer
+                                key={value}
+                                checked={field.value?.includes(value)}
+                                onClick={() => {
+                                  const updatedValue = field.value?.includes(
+                                    value
+                                  )
+                                    ? field.value.filter((val) => val !== value)
+                                    : [...(field.value || []), value];
+                                  field.onChange(updatedValue);
+                                }}
+                              >
+                                <div
+                                  className={`w-5 h-5 flex items-center justify-center rounded border ${
+                                    field.value?.includes(value)
+                                      ? "bg-primary border-primary"
+                                      : "border-muted-foreground"
+                                  }`}
+                                >
+                                  {field.value?.includes(value) && (
+                                    <Check className="w-3 h-3 text-white" />
+                                  )}
+                                </div>
+                                <span>{option}</span>
+                              </CheckboxContainer>
+                            );
+                          })}
                         </div>
-                        <span>{option}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {errors.use_case && (
-                    <p className="text-red-500 text-sm">{errors.use_case}</p>
-                  )}
-                </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">
-                    How many leads do you expect per month?
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {leads_per_month_options.map((option) => (
-                      <div
-                        key={option}
-                        onClick={() => selectRadio(option, setLeadsPerMonth)}
-                        className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                          leads_per_month === option
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-muted-foreground"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`w-4 h-4 rounded-full border ${
-                              leads_per_month === option
-                                ? "border-4 border-primary"
-                                : "border border-muted-foreground"
-                            }`}
-                          ></div>
-                          <span>{option}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {errors.leads_per_month && (
-                    <p className="text-red-500 text-sm">
-                      {errors.leads_per_month}
-                    </p>
-                  )}
-                </div>
-              </div>
+                  <FormField
+                    control={step2Form.control}
+                    name="leads_per_month"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>
+                          How many leads do you expect per month?
+                        </FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+                          >
+                            {leads_per_month_options.map((option) => (
+                              <FormItem
+                                key={option}
+                                className="flex items-center space-x-1 space-y-0"
+                              >
+                                <FormControl>
+                                  <RadioGroupItem
+                                    value={option}
+                                    id={`leads-${option}`}
+                                    className="sr-only"
+                                  />
+                                </FormControl>
+                                <FormLabel
+                                  htmlFor={`leads-${option}`}
+                                  className={`border rounded-lg p-3 w-full flex items-center gap-2 cursor-pointer transition-all ${
+                                    field.value === option
+                                      ? "border-primary bg-primary/10"
+                                      : "border-border hover:border-muted-foreground"
+                                  }`}
+                                >
+                                  <div
+                                    className={`w-4 h-4 rounded-full border ${
+                                      field.value === option
+                                        ? "border-4 border-primary"
+                                        : "border border-muted-foreground"
+                                    }`}
+                                  ></div>
+                                  <span>{option}</span>
+                                </FormLabel>
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <StepButtons isLoading={isLoading} onBack={handleBack} />
+                </form>
+              </Form>
             )}
 
             {activeStep === 2 && (
-              <div className="space-y-6">
-                <h2 className="text-xl sm:text-2xl font-semibold">
-                  Platforms Active On
-                </h2>
+              <Form {...step3Form}>
+                <form
+                  onSubmit={step3Form.handleSubmit(handleStep3Submit)}
+                  className="space-y-6"
+                >
+                  <h2 className="text-xl sm:text-2xl font-semibold">
+                    Platforms Active On
+                  </h2>
 
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">
-                    Which platforms are you active on?
-                  </p>
-                  <div className="space-y-2">
-                    {active_platforms_options.map((option) => (
-                      <div
-                        key={option
-                          .toLowerCase()
-                          .replace(/\s+/g, "_")
-                          .replace(/\//, "_")}
-                        onClick={() =>
-                          toggleCheckbox(
-                            active_platforms,
-                            option
+                  <FormField
+                    control={step3Form.control}
+                    name="active_platforms"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>
+                          Which platforms are you active on?
+                        </FormLabel>
+                        <div className="space-y-2">
+                          {active_platforms_options.map((option) => {
+                            const value = option
                               .toLowerCase()
                               .replace(/\s+/g, "_")
-                              .replace(/\//, "_"),
-                            setActivePlatforms
-                          )
-                        }
-                        className={`border rounded-lg p-3 cursor-pointer flex items-center gap-3 transition-all ${
-                          active_platforms.includes(
-                            option
-                              .toLowerCase()
-                              .replace(/\s+/g, "_")
-                              .replace(/\//, "_")
-                          )
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-muted-foreground"
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 flex items-center justify-center rounded border ${
-                            active_platforms.includes(
-                              option
-                                .toLowerCase()
-                                .replace(/\s+/g, "_")
-                                .replace(/\//, "_")
-                            )
-                              ? "bg-primary border-primary"
-                              : "border-muted-foreground"
-                          }`}
-                        >
-                          {active_platforms.includes(
-                            option
-                              .toLowerCase()
-                              .replace(/\s+/g, "_")
-                              .replace(/\//, "_")
-                          ) && <Check className="w-3 h-3 text-white" />}
+                              .replace(/\//, "_");
+                            return (
+                              <CheckboxContainer
+                                key={value}
+                                checked={field.value?.includes(value)}
+                                onClick={() => {
+                                  const updatedValue = field.value?.includes(
+                                    value
+                                  )
+                                    ? field.value.filter((val) => val !== value)
+                                    : [...(field.value || []), value];
+                                  field.onChange(updatedValue);
+                                }}
+                              >
+                                <div
+                                  className={`w-5 h-5 flex items-center justify-center rounded border ${
+                                    field.value?.includes(value)
+                                      ? "bg-primary border-primary"
+                                      : "border-muted-foreground"
+                                  }`}
+                                >
+                                  {field.value?.includes(value) && (
+                                    <Check className="w-3 h-3 text-white" />
+                                  )}
+                                </div>
+                                <span>{option}</span>
+                              </CheckboxContainer>
+                            );
+                          })}
                         </div>
-                        <span>{option}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {errors.active_platforms && (
-                    <p className="text-red-500 text-sm">
-                      {errors.active_platforms}
-                    </p>
-                  )}
-                </div>
+                        <FormDescription>
+                          This helps us pre-optimize your inbox filters and
+                          automations.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <p className="text-sm text-muted-foreground">
-                  This helps us pre-optimize your inbox filters and automations.
-                </p>
-              </div>
+                  <StepButtons isLoading={isLoading} onBack={handleBack} />
+                </form>
+              </Form>
             )}
 
             {activeStep === 3 && (
-              <div className="space-y-6">
-                <h2 className="text-xl sm:text-2xl font-semibold">
-                  Business Type & Goals
-                </h2>
+              <Form {...step4Form}>
+                <form
+                  onSubmit={step4Form.handleSubmit(handleStep4Submit)}
+                  className="space-y-6"
+                >
+                  <h2 className="text-xl sm:text-2xl font-semibold">
+                    Business Type & Goals
+                  </h2>
 
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">
-                    What type of business do you run?
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {business_type_options.map((option) => (
-                      <div
-                        key={option
-                          .toLowerCase()
-                          .replace(/\s+/g, "_")
-                          .replace(/\//, "_")}
-                        onClick={() =>
-                          selectRadio(
-                            option
-                              .toLowerCase()
-                              .replace(/\s+/g, "_")
-                              .replace(/\//, "_"),
-                            setBusinessType
-                          )
-                        }
-                        className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                          business_type ===
-                          option
-                            .toLowerCase()
-                            .replace(/\s+/g, "_")
-                            .replace(/\//, "_")
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-muted-foreground"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`w-4 h-4 rounded-full border ${
-                              business_type ===
-                              option
+                  <FormField
+                    control={step4Form.control}
+                    name="business_type"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>What type of business do you run?</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="grid grid-cols-2 sm:grid-cols-3 gap-3"
+                          >
+                            {business_type_options.map((option) => {
+                              const value = option
                                 .toLowerCase()
                                 .replace(/\s+/g, "_")
-                                .replace(/\//, "_")
-                                ? "border-4 border-primary"
-                                : "border border-muted-foreground"
-                            }`}
-                          ></div>
-                          <span>{option}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {errors.business_type && (
-                    <p className="text-red-500 text-sm">
-                      {errors.business_type}
-                    </p>
-                  )}
-                </div>
+                                .replace(/\//, "_");
+                              return (
+                                <FormItem
+                                  key={value}
+                                  className="flex items-center space-x-1 space-y-0"
+                                >
+                                  <FormControl>
+                                    <RadioGroupItem
+                                      value={value}
+                                      id={`business-${value}`}
+                                      className="sr-only"
+                                    />
+                                  </FormControl>
+                                  <FormLabel
+                                    htmlFor={`business-${value}`}
+                                    className={`border rounded-lg p-3 w-full flex items-center gap-2 cursor-pointer transition-all ${
+                                      field.value === value
+                                        ? "border-primary bg-primary/10"
+                                        : "border-border hover:border-muted-foreground"
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-4 h-4 rounded-full border ${
+                                        field.value === value
+                                          ? "border-4 border-primary"
+                                          : "border border-muted-foreground"
+                                      }`}
+                                    ></div>
+                                    <span>{option}</span>
+                                  </FormLabel>
+                                </FormItem>
+                              );
+                            })}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">
-                    What are your goals with Pilot?
-                  </p>
-                  <div className="space-y-2">
-                    {pilot_goal_options.map((option) => (
-                      <div
-                        key={option
-                          .toLowerCase()
-                          .replace(/\s+/g, "_")
-                          .replace(/&/, "and")}
-                        onClick={() =>
-                          toggleCheckbox(
-                            pilot_goal,
-                            option
+                  <FormField
+                    control={step4Form.control}
+                    name="pilot_goal"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>What are your goals with Pilot?</FormLabel>
+                        <div className="space-y-2">
+                          {pilot_goal_options.map((option) => {
+                            const value = option
                               .toLowerCase()
                               .replace(/\s+/g, "_")
-                              .replace(/&/, "and"),
-                            setPilotGoal
-                          )
-                        }
-                        className={`border rounded-lg p-3 cursor-pointer flex items-center gap-3 transition-all ${
-                          pilot_goal.includes(
-                            option
-                              .toLowerCase()
-                              .replace(/\s+/g, "_")
-                              .replace(/&/, "and")
-                          )
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-muted-foreground"
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 flex items-center justify-center rounded border ${
-                            pilot_goal.includes(
-                              option
-                                .toLowerCase()
-                                .replace(/\s+/g, "_")
-                                .replace(/&/, "and")
-                            )
-                              ? "bg-primary border-primary"
-                              : "border-muted-foreground"
-                          }`}
-                        >
-                          {pilot_goal.includes(
-                            option
-                              .toLowerCase()
-                              .replace(/\s+/g, "_")
-                              .replace(/&/, "and")
-                          ) && <Check className="w-3 h-3 text-white" />}
+                              .replace(/&/, "and");
+                            return (
+                              <CheckboxContainer
+                                key={value}
+                                checked={field.value?.includes(value)}
+                                onClick={() => {
+                                  const updatedValue = field.value?.includes(
+                                    value
+                                  )
+                                    ? field.value.filter((val) => val !== value)
+                                    : [...(field.value || []), value];
+                                  field.onChange(updatedValue);
+                                }}
+                              >
+                                <div
+                                  className={`w-5 h-5 flex items-center justify-center rounded border ${
+                                    field.value?.includes(value)
+                                      ? "bg-primary border-primary"
+                                      : "border-muted-foreground"
+                                  }`}
+                                >
+                                  {field.value?.includes(value) && (
+                                    <Check className="w-3 h-3 text-white" />
+                                  )}
+                                </div>
+                                <span>{option}</span>
+                              </CheckboxContainer>
+                            );
+                          })}
                         </div>
-                        <span>{option}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {errors.pilot_goal && (
-                    <p className="text-red-500 text-sm">{errors.pilot_goal}</p>
-                  )}
-                </div>
-              </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <StepButtons isLoading={isLoading} onBack={handleBack} />
+                </form>
+              </Form>
             )}
 
             {activeStep === 4 && (
-              <div className="space-y-6">
-                <h2 className="text-xl sm:text-2xl font-semibold">
-                  Lead Tracking & Brand Tone
-                </h2>
+              <Form {...step5Form}>
+                <form
+                  onSubmit={step5Form.handleSubmit(handleStep5Submit)}
+                  className="space-y-6"
+                >
+                  <h2 className="text-xl sm:text-2xl font-semibold">
+                    Lead Tracking
+                  </h2>
 
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">
-                    How do you currently track leads?
-                  </p>
-                  <div className="space-y-2">
-                    {current_tracking_options.map((option) => (
-                      <div
-                        key={option.toLowerCase().replace(/\s+/g, "_")}
-                        onClick={() =>
-                          toggleCheckbox(
-                            current_tracking,
-                            option.toLowerCase().replace(/\s+/g, "_"),
-                            setCurrentTracking
-                          )
-                        }
-                        className={`border rounded-lg p-3 cursor-pointer flex items-center gap-3 transition-all ${
-                          current_tracking.includes(
-                            option.toLowerCase().replace(/\s+/g, "_")
-                          )
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-muted-foreground"
-                        }`}
-                      >
-                        <div
-                          className={`w-5 h-5 flex items-center justify-center rounded border ${
-                            current_tracking.includes(
-                              option.toLowerCase().replace(/\s+/g, "_")
-                            )
-                              ? "bg-primary border-primary"
-                              : "border-muted-foreground"
-                          }`}
-                        >
-                          {current_tracking.includes(
-                            option.toLowerCase().replace(/\s+/g, "_")
-                          ) && <Check className="w-3 h-3 text-white" />}
+                  <FormField
+                    control={step5Form.control}
+                    name="current_tracking"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>How do you currently track leads?</FormLabel>
+                        <div className="space-y-2">
+                          {current_tracking_options.map((option) => {
+                            const value = option
+                              .toLowerCase()
+                              .replace(/\s+/g, "_");
+                            return (
+                              <CheckboxContainer
+                                key={value}
+                                checked={field.value?.includes(value)}
+                                onClick={() => {
+                                  const updatedValue = field.value?.includes(
+                                    value
+                                  )
+                                    ? field.value.filter((val) => val !== value)
+                                    : [...(field.value || []), value];
+                                  field.onChange(updatedValue);
+                                }}
+                              >
+                                <div
+                                  className={`w-5 h-5 flex items-center justify-center rounded border ${
+                                    field.value?.includes(value)
+                                      ? "bg-primary border-primary"
+                                      : "border-muted-foreground"
+                                  }`}
+                                >
+                                  {field.value?.includes(value) && (
+                                    <Check className="w-3 h-3 text-white" />
+                                  )}
+                                </div>
+                                <span>{option}</span>
+                              </CheckboxContainer>
+                            );
+                          })}
                         </div>
-                        <span>{option}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {errors.current_tracking && (
-                    <p className="text-red-500 text-sm">
-                      {errors.current_tracking}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">
-                    Upload a reference for your brand&apos;s tone (optional)
-                  </p>
-                  <div
-                    className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-6 text-center cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      accept="image/*,.pdf"
-                      onChange={handleFileUpload}
-                    />
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      {tone_reference_file
-                        ? "File uploaded successfully"
-                        : "Drop a file here or click to browse"}
-                    </p>
-                    {tone_reference_file && (
-                      <p className="text-xs text-primary mt-2">
-                        {tone_reference_file.split("/").pop()}
-                      </p>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
-                </div>
-              </div>
+                  />
+
+                  <StepButtons isLoading={isLoading} onBack={handleBack} />
+                </form>
+              </Form>
             )}
 
             {activeStep === 5 && (
@@ -1002,43 +1000,19 @@ export default function OnboardPage() {
                   You&apos;re all set. We&apos;ll notify you when platform
                   integrations are ready.
                 </p>
+                <div className="pt-4">
+                  <Button
+                    onClick={handleComplete}
+                    disabled={isLoading}
+                    className="w-full sm:w-auto h-10 sm:h-12"
+                  >
+                    {isLoading ? "Processing..." : "Get Started"}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
         </CardContent>
-
-        <CardFooter className="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-4 w-full">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleBack}
-            disabled={activeStep === 0 || isLoading}
-            className="w-full sm:w-1/2 h-10 sm:h-12"
-          >
-              Previous
-            </Button>
-
-            {activeStep < steps.length - 1 ? (
-            <Button
-              type="button"
-              variant="default"
-              onClick={handleNext}
-              className="w-full sm:w-1/2 h-10 sm:h-12"
-              disabled={!stepValidationState[activeStep] || isLoading}
-            >
-              {isLoading ? "Saving..." : "Next"}
-              </Button>
-            ) : (
-            <Button
-              type="button"
-              onClick={handleComplete}
-              className="w-full sm:w-1/2 h-10 sm:h-12"
-              disabled={isLoading}
-            >
-              {isLoading ? "Completing..." : "Enter App"}
-              </Button>
-            )}
-        </CardFooter>
       </Card>
     </section>
   );

@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase';
+import { arraysEqual } from '@/lib/utils';
 import { revalidatePath } from 'next/cache';
 
 type Step1Data = {
@@ -24,190 +25,293 @@ type Step4Data = {
 
 type Step5Data = {
   current_tracking: string[];
-  tone_reference_file?: string;
 };
+
+const supabase = createClient();
+
+async function getUserEmail(userId: string) {
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+  
+  if (error || !data.user) {
+    throw new Error(`Unable to get user email: ${error?.message}`);
+  }
+  
+  return data.user.email;
+}
 
 export async function updateStep1(userId: string, data: Step1Data) {
   try {
-    const supabase = createClient();
-    
-    const { error } = await supabase
+    const { data: existingData, error: fetchError } = await supabase
       .from('users')
-      .update({
+      .select('name, gender, email')
+      .eq('id', userId)
+      .maybeSingle();
+      
+    if (existingData && 
+        existingData.name === data.name && 
+        existingData.gender === data.gender) {
+      return { success: true, data: existingData };
+    }
+    
+    let email = existingData?.email;
+    if (!email && fetchError) {
+      email = await getUserEmail(userId);
+    }
+    
+    const { data: updateData, error } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
         name: data.name,
         gender: data.gender,
+        email: email,
         updated_at: new Date().toISOString(),
+        created_at: fetchError ? new Date().toISOString() : undefined,
+      }, {
+        onConflict: 'id'
       })
-      .eq('id', userId);
+      .select();
     
-    if (error) throw new Error(error.message);
+    if (error) {
+      return { success: false, error: `Update failed: ${error.message}` };
+    }
     
     revalidatePath('/onboard');
-    return { success: true };
+    return { success: true, data: updateData };
   } catch (error) {
-    console.error('Error updating step 1:', error);
     return { success: false, error: (error as Error).message };
   }
 }
 
 export async function updateStep2(userId: string, data: Step2Data) {
   try {
-    const supabase = createClient();
-    
-    const { error } = await supabase
+    const { data: existingData, error: fetchError } = await supabase
       .from('users')
-      .update({
+      .select('use_case, leads_per_month, email')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (existingData && 
+        arraysEqual(existingData.use_case as string[], data.use_case) && 
+        existingData.leads_per_month === data.leads_per_month) {
+      return { success: true, data: existingData };
+    }
+    
+    let email = existingData?.email;
+    if (!email && fetchError) {
+      email = await getUserEmail(userId);
+    }
+    
+    const { data: updateData, error } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
         use_case: data.use_case,
         leads_per_month: data.leads_per_month,
+        email: email,
         updated_at: new Date().toISOString(),
+        created_at: fetchError ? new Date().toISOString() : undefined,
+      }, {
+        onConflict: 'id'
       })
-      .eq('id', userId);
+      .select();
     
-    if (error) throw new Error(error.message);
+    if (error) {
+      return { success: false, error: `Update failed: ${error.message}` };
+    }
     
     revalidatePath('/onboard');
-    return { success: true };
+    return { success: true, data: updateData };
   } catch (error) {
-    console.error('Error updating step 2:', error);
     return { success: false, error: (error as Error).message };
   }
 }
 
 export async function updateStep3(userId: string, data: Step3Data) {
   try {
-    const supabase = createClient();
-    
-    const { error } = await supabase
+    const { data: existingData, error: fetchError } = await supabase
       .from('users')
-      .update({
-        active_platforms: data.active_platforms,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
+      .select('active_platforms, email')
+      .eq('id', userId)
+      .maybeSingle();
     
-    if (error) throw new Error(error.message);
+    if (existingData && 
+        arraysEqual(existingData.active_platforms as string[], data.active_platforms)) {
+      return { success: true, data: existingData };
+    }
+    
+    let email = existingData?.email;
+    if (!email && fetchError) {
+      email = await getUserEmail(userId);
+    }
+    
+    const { data: updateData, error } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
+        active_platforms: data.active_platforms,
+        email: email,
+        updated_at: new Date().toISOString(),
+        created_at: fetchError ? new Date().toISOString() : undefined,
+      }, {
+        onConflict: 'id'
+      })
+      .select();
+    
+    if (error) {
+      return { success: false, error: `Update failed: ${error.message}` };
+    }
     
     revalidatePath('/onboard');
-    return { success: true };
+    return { success: true, data: updateData };
   } catch (error) {
-    console.error('Error updating step 3:', error);
     return { success: false, error: (error as Error).message };
   }
 }
 
 export async function updateStep4(userId: string, data: Step4Data) {
   try {
-    const supabase = createClient();
-    
-    const { error } = await supabase
+    const { data: existingData, error: fetchError } = await supabase
       .from('users')
-      .update({
+      .select('business_type, pilot_goal, email')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (existingData && 
+        existingData.business_type === data.business_type &&
+        arraysEqual(existingData.pilot_goal as string[], data.pilot_goal)) {
+      return { success: true, data: existingData };
+    }
+    
+    let email = existingData?.email;
+    if (!email && fetchError) {
+      email = await getUserEmail(userId);
+    }
+    
+    const { data: updateData, error } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
         business_type: data.business_type,
         pilot_goal: data.pilot_goal,
+        email: email,
         updated_at: new Date().toISOString(),
+        created_at: fetchError ? new Date().toISOString() : undefined,
+      }, {
+        onConflict: 'id'
       })
-      .eq('id', userId);
+      .select();
     
-    if (error) throw new Error(error.message);
+    if (error) {
+      return { success: false, error: `Update failed: ${error.message}` };
+    }
     
     revalidatePath('/onboard');
-    return { success: true };
+    return { success: true, data: updateData };
   } catch (error) {
-    console.error('Error updating step 4:', error);
     return { success: false, error: (error as Error).message };
   }
 }
 
 export async function updateStep5(userId: string, data: Step5Data) {
   try {
-    const supabase = createClient();
-    
-    const { error } = await supabase
+    const { data: existingData, error: fetchError } = await supabase
       .from('users')
-      .update({
-        current_tracking: data.current_tracking,
-        ...(data.tone_reference_file ? { tone_reference_file: data.tone_reference_file } : {}),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
+      .select('current_tracking, email')
+      .eq('id', userId)
+      .maybeSingle();
     
-    if (error) throw new Error(error.message);
+    if (existingData && 
+        arraysEqual(existingData.current_tracking as string[], data.current_tracking)) {
+      return { success: true, data: existingData };
+    }
+    
+    let email = existingData?.email;
+    if (!email && fetchError) {
+      email = await getUserEmail(userId);
+    }
+    
+    const { data: updateData, error } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
+        current_tracking: data.current_tracking,
+        email: email,
+        updated_at: new Date().toISOString(),
+        created_at: fetchError ? new Date().toISOString() : undefined,
+      }, {
+        onConflict: 'id'
+      })
+      .select();
+    
+    if (error) {
+      return { success: false, error: `Update failed: ${error.message}` };
+    }
     
     revalidatePath('/onboard');
-    return { success: true };
+    return { success: true, data: updateData };
   } catch (error) {
-    console.error('Error updating step 5:', error);
     return { success: false, error: (error as Error).message };
   }
 }
 
 export async function completeOnboarding(userId: string) {
   try {
-    const supabase = createClient();
-    
-    const { error } = await supabase
+    const { data: existingData, error: fetchError } = await supabase
       .from('users')
-      .update({
-        onboarding_complete: true,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
+      .select('onboarding_complete, email')
+      .eq('id', userId)
+      .maybeSingle();
     
-    if (error) throw new Error(error.message);
+    if (existingData && existingData.onboarding_complete === true) {
+      return { success: true, data: existingData };
+    }
+    
+    let email = existingData?.email;
+    if (!email && fetchError) {
+      email = await getUserEmail(userId);
+    }
+    
+    const { data: updateData, error } = await supabase
+      .from('users')
+      .upsert({
+        id: userId,
+        onboarding_complete: true,
+        email: email,
+        updated_at: new Date().toISOString(),
+        created_at: fetchError ? new Date().toISOString() : undefined,
+      }, {
+        onConflict: 'id'
+      })
+      .select();
+    
+    if (error) {
+      console.error(`Error completing onboarding for user ${userId}:`, error);
+      return { success: false, error: `Update failed: ${error.message}` };
+    }
     
     revalidatePath('/');
-    return { success: true };
+    return { success: true, data: updateData };
   } catch (error) {
     console.error('Error completing onboarding:', error);
     return { success: false, error: (error as Error).message };
   }
 }
 
-export async function uploadToneReference(userId: string, file: File) {
-  try {
-    const supabase = createClient();
-    
-    // Create a unique file path
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${userId}-${Date.now()}.${fileExt}`;
-    const filePath = `tone-references/${fileName}`;
-    
-    // Use FormData to upload the file
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // Store reference in database
-    const { error: dbError } = await supabase
-      .from('users')
-      .update({
-        tone_reference_file: filePath,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
-    
-    if (dbError) throw new Error(dbError.message);
-    
-    revalidatePath('/onboard');
-    return { success: true, filePath };
-  } catch (error) {
-    console.error('Error uploading tone reference:', error);
-    return { success: false, error: (error as Error).message };
-  }
-}
-
 export async function getUserOnboardingData(userId: string) {
   try {
-    const supabase = createClient();
-    
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
     
-    if (error) throw new Error(error.message);
+    if (error && error.code !== 'PGRST116') {
+      console.error(`Error fetching onboarding data for user ${userId}:`, error);
+      throw new Error(error.message);
+    }
     
-    return { success: true, data };
+    return { success: true, data: data || null };
   } catch (error) {
     console.error('Error fetching user onboarding data:', error);
     return { success: false, error: (error as Error).message, data: null };

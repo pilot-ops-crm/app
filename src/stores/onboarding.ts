@@ -13,7 +13,6 @@ export type OnboardingState = {
   business_type: string;
   pilot_goal: string[];
   current_tracking: string[];
-  tone_reference_file: string;
   
   onboarding_complete: boolean;
   
@@ -28,7 +27,6 @@ export type OnboardingState = {
   setBusinessType: (business_type: string) => void;
   setPilotGoal: (pilot_goal: string[]) => void;
   setCurrentTracking: (current_tracking: string[]) => void;
-  setToneReferenceFile: (tone_reference_file: string) => void;
   
   setOnboardingComplete: (onboarding_complete: boolean) => void;
   
@@ -49,7 +47,6 @@ export const useOnboardingStore = create<OnboardingState>()(
       business_type: '',
       pilot_goal: [],
       current_tracking: [],
-      tone_reference_file: '',
       
       onboarding_complete: false,
       
@@ -64,7 +61,6 @@ export const useOnboardingStore = create<OnboardingState>()(
       setBusinessType: (business_type) => set({ business_type }),
       setPilotGoal: (pilot_goal) => set({ pilot_goal }),
       setCurrentTracking: (current_tracking) => set({ current_tracking }),
-      setToneReferenceFile: (tone_reference_file) => set({ tone_reference_file }),
       
       setOnboardingComplete: (onboarding_complete) => set({ onboarding_complete }),
       
@@ -80,7 +76,6 @@ export const useOnboardingStore = create<OnboardingState>()(
         business_type: '',
         pilot_goal: [],
         current_tracking: [],
-        tone_reference_file: '',
         
         onboarding_complete: false,
       }),

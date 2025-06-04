@@ -13,7 +13,6 @@ export type User = {
   business_type?: string | null;
   pilot_goal?: string[] | null;
   current_tracking?: string[] | null;
-  tone_reference_file?: string | null;
 
   onboarding_complete: boolean;
 
