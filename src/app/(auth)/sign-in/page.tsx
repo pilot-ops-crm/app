@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import useUser from "@/hooks/use-user";
+import { useRouter } from "next/navigation";
 
 export default function SignIn() {
   const router = useRouter();
@@ -17,61 +17,6 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  useEffect(() => {
-    const handleOAuthUserCreation = async () => {
-      if (!loading && user) {
-        const { data, error: fetchError } = await supabase
-          .from('users')
-          .select()
-          .eq('id', user.id)
-          .single();
-        
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          console.error("Error checking for existing user:", fetchError);
-        }
-        
-        if (!data) {
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert({
-              id: user.id,
-              email: user.email || '',
-              name: user.user_metadata?.name || user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split("@")[0] || 'User',
-            });
-          
-          if (insertError) {
-            console.error("Error creating user record after OAuth:", insertError);
-          }
-        }
-        
-        router.push("/");
-      }
-    };
-
-    handleOAuthUserCreation();
-  }, [user, loading, router]);
-
-  const signInWithProvider = async (provider: "google") => {
-    try {
-      setIsLoading(provider);
-      setError(null);
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}`,
-        },
-      });
-
-      if (error) throw error;
-    } catch (error) {
-      setError("An error occurred during sign in. Please try again.");
-      console.error("Sign in error:", error);
-    } finally {
-      setIsLoading(null);
-    }
-  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,6 +82,7 @@ export default function SignIn() {
       console.error("Email auth error:", error);
     } finally {
       setIsLoading(null);
+      router.push("/");
     }
   };
 
@@ -154,41 +100,6 @@ export default function SignIn() {
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Button
-            variant="outline"
-            className="w-full bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground"
-            onClick={() => signInWithProvider("google")}
-            disabled={isLoading !== null}
-          >
-            {isLoading === "google" ? (
-              <Image
-                src="/spinner.svg"
-                alt="Loading"
-                width={20}
-                height={20}
-                className="mr-2 animate-spin"
-              />
-            ) : (
-              <Image
-                src="/google.svg"
-                alt="Google"
-                width={20}
-                height={20}
-                className="mr-2"
-              />
-            )}
-            Google
-          </Button>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">
-                OR CONTINUE WITH
-              </span>
-            </div>
-          </div>
           <form onSubmit={handleSignIn} className="space-y-4">
             <div className="space-y-2">
               <label
