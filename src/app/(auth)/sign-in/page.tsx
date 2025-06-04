@@ -19,9 +19,37 @@ export default function SignIn() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push("/");
-    }
+    const handleOAuthUserCreation = async () => {
+      if (!loading && user) {
+        const { data, error: fetchError } = await supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .single();
+        
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error("Error checking for existing user:", fetchError);
+        }
+        
+        if (!data) {
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert({
+              id: user.id,
+              email: user.email || '',
+              name: user.user_metadata?.name || user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split("@")[0] || 'User',
+            });
+          
+          if (insertError) {
+            console.error("Error creating user record after OAuth:", insertError);
+          }
+        }
+        
+        router.push("/");
+      }
+    };
+
+    handleOAuthUserCreation();
   }, [user, loading, router]);
 
   const signInWithProvider = async (provider: "google") => {
@@ -62,7 +90,41 @@ export default function SignIn() {
 
       if (result.error) {
         if (result.error.message.includes("Invalid login credentials")) {
-          throw new Error("Invalid email or password. Please try again.");
+          const signUpResult = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                display_name: email.split("@")[0],
+              },
+            },
+          });
+
+          if (signUpResult.error) {
+            throw signUpResult.error;
+          }
+
+          if (signUpResult.data.user) {
+            const { error: insertError } = await supabase
+              .from('users')
+              .insert({
+                id: signUpResult.data.user.id,
+                email: email,
+                name: email.split("@")[0],
+              });
+
+            if (insertError) {
+              console.error("Error creating user record:", insertError);
+            }
+            
+            if (!signUpResult.data.session) {
+              setError("Account created! Please check your email to confirm your account.");
+              setIsLoading(null);
+              return;
+            }
+            
+            return;
+          }
         }
         throw result.error;
       }

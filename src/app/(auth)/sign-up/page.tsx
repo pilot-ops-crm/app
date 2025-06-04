@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -8,14 +8,50 @@ import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import useUser from "@/hooks/use-user";
 
 export default function SignUp() {
   const router = useRouter();
+  const { user, loading } = useUser();
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    const handleOAuthUserCreation = async () => {
+      if (!loading && user) {
+        const { data, error: fetchError } = await supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .single();
+        
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          console.error("Error checking for existing user:", fetchError);
+        }
+        
+        if (!data) {
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert({
+              id: user.id,
+              email: user.email || '',
+              name: user.user_metadata?.name || user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split("@")[0] || 'User',
+            });
+          
+          if (insertError) {
+            console.error("Error creating user record after OAuth:", insertError);
+          }
+        }
+        
+        router.push("/");
+      }
+    };
+
+    handleOAuthUserCreation();
+  }, [user, loading, router]);
 
   const signUpWithProvider = async (provider: "google") => {
     try {
@@ -66,6 +102,20 @@ export default function SignUp() {
         throw result.error;
       }
 
+      if (result.data.user) {
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: result.data.user.id,
+            email: email,
+            name: displayName,
+          });
+
+        if (insertError) {
+          console.error("Error creating user record:", insertError);
+        }
+      }
+
       if (result.data.user && !result.data.session) {
         setError("Please check your email to confirm your account.");
         return;
@@ -85,6 +135,8 @@ export default function SignUp() {
       setIsLoading(null);
     }
   };
+
+  if (loading || user) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
