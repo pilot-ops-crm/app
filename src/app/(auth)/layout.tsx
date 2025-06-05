@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "../globals.css";
+import '../globals.css'
 
 export const metadata: Metadata = {
   title: "Auth | Pilot - AI DM Assistant",
@@ -12,7 +12,7 @@ export default function AuthLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -17,6 +17,12 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      router.replace("/");
+    }
+  }, [user, router]);  
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +79,8 @@ export default function SignIn() {
         }
         throw result.error;
       }
+      
+      router.push("/");
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error
@@ -82,11 +90,10 @@ export default function SignIn() {
       console.error("Email auth error:", error);
     } finally {
       setIsLoading(null);
-      router.push("/");
     }
   };
 
-  if (loading || user) return null;
+  if (loading) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

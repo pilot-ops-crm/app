@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -18,6 +18,12 @@ export default function SignUp() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      router.replace("/");
+    }
+  }, [user, router]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,11 +80,10 @@ export default function SignUp() {
       console.error("Sign up error:", error);
     } finally {
       setIsLoading(null);
-      router.push("/");
     }
   };
 
-  if (loading || user) return null;
+  if (loading) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
