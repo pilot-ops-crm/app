@@ -1,5 +1,7 @@
+import React from "react";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const geist = Geist({
@@ -12,18 +14,22 @@ export default function AppLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geist.variable} antialiased`} suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
-      </body>
-    </html>
+  return React.createElement(
+    'html',
+    { lang: "en", suppressHydrationWarning: true },
+    React.createElement(
+      'body',
+      { className: `${geist.variable} antialiased`, suppressHydrationWarning: true },
+      React.createElement(
+        ThemeProvider,
+        {
+          attribute: "class",
+          defaultTheme: "system",
+          enableSystem: true,
+          disableTransitionOnChange: true
+        },
+        React.createElement(Providers, null, children)
+      )
+    )
   );
 }
