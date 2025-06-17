@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 
 const INSTAGRAM_CLIENT_ID = process.env.INSTAGRAM_CLIENT_ID;
 const INSTAGRAM_CLIENT_SECRET = process.env.INSTAGRAM_CLIENT_SECRET;
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/instagram/callback`;
+const REDIRECT_URI = `https://7d9f-138-199-22-106.ngrok-free.app/api/auth/instagram/callback`;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -49,14 +49,13 @@ export async function GET(request: Request) {
       throw new Error("Failed to get user profile");
     }
 
-    const { username } = await profileResponse.json();
-    console.log(username);
+    const { username, id } = await profileResponse.json();
+    console.log(username, id, access_token);
 
     // Store the access token in a secure cookie
     const cookieStore = await cookies();
     cookieStore.set("instagram_access_token", access_token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 30, // 30 days
     });
@@ -68,4 +67,4 @@ export async function GET(request: Request) {
       `${process.env.NEXT_PUBLIC_APP_URL}/settings?error=auth_failed`
     );
   }
-} 
+}
