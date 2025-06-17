@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import Image from "next/image";
 
 type Message = {
   id: string;
@@ -118,10 +119,12 @@ export default function ChatPage() {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-neutral-200 flex items-center justify-center">
                   {chat.avatar ? (
-                    <img
+                    <Image
                       src={chat.avatar}
                       alt={chat.username}
-                      className="w-full h-full rounded-full"
+                      width={40}
+                      height={40}
+                      className="rounded-full object-cover"
                     />
                   ) : (
                     <span className="text-lg font-semibold">

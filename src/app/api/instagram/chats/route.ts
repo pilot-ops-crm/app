@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { Chat, InstagramConversation } from "@/types";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -19,10 +20,10 @@ export async function GET() {
       throw new Error("Failed to fetch conversations");
     }
 
-    const { data } = await response.json();
+    const { data } = await response.json() as { data: InstagramConversation[] };
 
     // Transform the data to match our Chat type
-    const chats = data.map((conversation: any) => ({
+    const chats: Chat[] = data.map((conversation: InstagramConversation) => ({
       id: conversation.id,
       username: conversation.participants.data[0].username,
       lastMessage: "Last message", // This would need to be fetched separately

@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { InstagramMessage, Message } from "@/types";
 
 export async function GET(
-  request: Request,
-  { params }: { params: { chatId: string } }
+  request: NextRequest,
+  context: { params: Promise<{ chatId: string }> }
 ) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");
@@ -11,6 +12,9 @@ export async function GET(
   if (!accessToken) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  // Await the params Promise
+  const params = await context.params;
 
   try {
     // Fetch messages from Instagram Graph API
@@ -22,10 +26,10 @@ export async function GET(
       throw new Error("Failed to fetch messages");
     }
 
-    const { data } = await response.json();
+    const { data } = await response.json() as { data: InstagramMessage[] };
 
     // Transform the data to match our Message type
-    const messages = data.map((message: any) => ({
+    const messages: Message[] = data.map((message: InstagramMessage) => ({
       id: message.id,
       text: message.message,
       sender: message.from.id === "me" ? "me" : "them",
@@ -43,15 +47,18 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
-  { params }: { params: { chatId: string } }
+  request: NextRequest,
+  context: { params: Promise<{ chatId: string }> }
 ) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");
 
   if (!accessToken) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
+
+  // Await the params Promise
+  const params = await context.params;
 
   try {
     const { message } = await request.json();
@@ -75,7 +82,7 @@ export async function POST(
       throw new Error("Failed to send message");
     }
 
-    const data = await response.json();
+    const data = await response.json() as { id: string };
 
     // Return the sent message in our Message type format
     return NextResponse.json({
@@ -91,4 +98,4 @@ export async function POST(
       { status: 500 }
     );
   }
-} 
+}

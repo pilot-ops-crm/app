@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 
 const INSTAGRAM_VERIFY_TOKEN = process.env.INSTAGRAM_VERIFY_TOKEN;
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("hub.mode");
   const token = searchParams.get("hub.verify_token");
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   return new NextResponse("Forbidden", { status: 403 });
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const headersList = await headers();
   const signature = headersList.get("x-hub-signature");
 
