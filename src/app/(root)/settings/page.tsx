@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "sonner";
 
 type InstagramConnection = {
   connected: boolean;
@@ -50,11 +51,11 @@ export default function SettingsPage() {
     const success = searchParams.get("success");
 
     if (error) {
-      alert(`Instagram connection failed: ${error}`);
+      toast.error(`Instagram connection failed: ${error}`);
     }
 
     if (success === "instagram_connected") {
-      alert("Successfully connected to Instagram!");
+      toast.success("Successfully connected to Instagram!");
       window.location.href = "/settings";
     }
   }, [searchParams]);
@@ -76,14 +77,14 @@ export default function SettingsPage() {
       });
 
       if (response.ok) {
-        alert("Disconnected from Instagram");
+        toast.success("Disconnected from Instagram");
         setInstagramConnection({ connected: false });
       } else {
-        alert("Failed to disconnect from Instagram");
+        toast.error("Failed to disconnect from Instagram");
       }
     } catch (error) {
       console.error("Error disconnecting from Instagram:", error);
-      alert("Error disconnecting from Instagram");
+      toast.error("Error disconnecting from Instagram");
     }
   };
 
