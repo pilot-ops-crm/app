@@ -19,3 +19,44 @@ export type User = {
   created_at: string; // timestamp in ISO format
   updated_at: string; // timestamp in ISO format
 };
+
+type InstagramParticipant = {
+  username: string;
+  id: string;
+  profile_picture?: string;
+}
+
+export type InstagramConversation = {
+  id: string;
+  participants: {
+    data: InstagramParticipant[];
+  };
+  updated_time: string;
+}
+
+export type Chat = {
+  id: string;
+  username: string;
+  lastMessage: string;
+  unreadCount: number;
+  avatar?: string;
+}
+
+export type InstagramMessageSender = {
+  id: string;
+  username?: string;
+}
+
+export type InstagramMessage = {
+  id: string;
+  message: string;
+  from: InstagramMessageSender;
+  created_time: string;
+}
+
+export type Message = {
+  id: string;
+  text: string;
+  sender: "me" | "them";
+  timestamp: string;
+}

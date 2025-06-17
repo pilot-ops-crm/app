@@ -50,6 +50,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CheckboxContainer } from "@/components/ui/checkbox";
 import StepButtons from "@/components/step-buttons";
+import { toast } from "sonner";
 
 const step1Schema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
@@ -359,11 +360,11 @@ export default function OnboardPage() {
         setActiveStep((prev) => prev + 1);
       } else {
         console.error("Failed to update step 1:", result.error);
-        alert(`Failed to save: ${result.error}`);
+        toast.error(`Failed to save: ${result.error}`);
       }
     } catch (error) {
       console.error("Error updating step 1:", error);
-      alert(`An error occurred: ${(error as Error).message}`);
+      toast.error(`An error occurred: ${(error as Error).message}`);
     } finally {
       setIsLoading(false);
     }
@@ -382,11 +383,11 @@ export default function OnboardPage() {
         setActiveStep((prev) => prev + 1);
       } else {
         console.error("Failed to update step 2:", result.error);
-        alert(`Failed to save: ${result.error}`);
+        toast.error(`Failed to save: ${result.error}`);
       }
     } catch (error) {
       console.error("Error updating step 2:", error);
-      alert(`An error occurred: ${(error as Error).message}`);
+      toast.error(`An error occurred: ${(error as Error).message}`);
     } finally {
       setIsLoading(false);
     }
