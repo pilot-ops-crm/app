@@ -27,11 +27,11 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <body suppressHydrationWarning>
           <AuthCheck>
-            <section className="flex h-screen w-full">
+            <section className="flex h-screen w-full overflow-hidden">
               <AppSidebar />
               <SidebarInset className="border">
                 <PageHeader />
-                <main className="flex-1 overflow-y-auto p-6">{children}</main>
+                <main className="flex-1 overflow-y-auto">{children}</main>
               </SidebarInset>
             </section>
           </AuthCheck>

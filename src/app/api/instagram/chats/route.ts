@@ -11,25 +11,65 @@ export async function GET() {
   }
 
   try {
-    // Fetch conversations from Instagram Graph API
     const response = await fetch(
-      `https://graph.instagram.com/me/conversations?fields=participants,updated_time&access_token=${accessToken.value}`
+      `https://graph.instagram.com/v23.0/me/conversations?fields=participants,updated_time,unread_count,messages{id,from,message,created_time,attachments}`,
+      {
+        headers: {
+          "Authorization": `Bearer ${accessToken.value}`
+        }
+      }
     );
 
     if (!response.ok) {
-      throw new Error("Failed to fetch conversations");
+      const errorData = await response.json();
+      console.error("Instagram API error:", errorData);
+      throw new Error(`Failed to fetch conversations: ${JSON.stringify(errorData)}`);
     }
 
     const { data } = await response.json() as { data: InstagramConversation[] };
+    
+    if (!data || data.length === 0) {
+      return NextResponse.json([]);
+    }
 
-    // Transform the data to match our Chat type
-    const chats: Chat[] = data.map((conversation: InstagramConversation) => ({
-      id: conversation.id,
-      username: conversation.participants.data[0].username,
-      lastMessage: "Last message", // This would need to be fetched separately
-      unreadCount: 0, // This would need to be tracked separately
-      avatar: conversation.participants.data[0].profile_picture,
-    }));
+    const chats: Chat[] = data.map((conversation: InstagramConversation) => {
+      let lastMessage = "No messages yet";
+      if (conversation.messages && conversation.messages.data && conversation.messages.data.length > 0) {
+        const lastMsg = conversation.messages.data[0];
+        
+        if (lastMsg.text) {
+          lastMessage = lastMsg.text.length > 30 
+            ? lastMsg.text.substring(0, 30) + '...' 
+            : lastMsg.text;
+        } else if (lastMsg.attachments && lastMsg.attachments.length > 0) {
+          const attachmentType = lastMsg.attachments[0].type || '';
+          
+          if (attachmentType.startsWith('image/')) {
+            lastMessage = '[Image]';
+          } else if (attachmentType.startsWith('video/')) {
+            lastMessage = '[Video]';
+          } else if (attachmentType.startsWith('audio/')) {
+            lastMessage = '[Audio]';
+          } else {
+            lastMessage = '[Attachment]';
+          }
+        }
+      }
+
+      const otherParticipant = conversation.participants && 
+        conversation.participants.data && 
+        conversation.participants.data.length > 1 ? 
+        conversation.participants.data[1] : 
+        { username: 'Unknown', id: '', profile_picture: undefined };
+
+      return {
+        id: conversation.id,
+        username: otherParticipant.username,
+        lastMessage,
+        unreadCount: conversation.unread_count || 0,
+        avatar: otherParticipant.profile_picture,
+      };
+    });
 
     return NextResponse.json(chats);
   } catch (error) {
@@ -39,4 +79,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-} 
+}

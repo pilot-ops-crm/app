@@ -32,6 +32,10 @@ export type InstagramConversation = {
     data: InstagramParticipant[];
   };
   updated_time: string;
+  messages: {
+    data: InstagramMessage[];
+  };
+  unread_count: number;
 }
 
 export type Chat = {
@@ -39,8 +43,8 @@ export type Chat = {
   username: string;
   lastMessage: string;
   unreadCount: number;
-  avatar?: string;
-}
+  participants?: string[];
+};
 
 export type InstagramMessageSender = {
   id: string;
@@ -49,14 +53,29 @@ export type InstagramMessageSender = {
 
 export type InstagramMessage = {
   id: string;
-  message: string;
-  from: InstagramMessageSender;
-  created_time: string;
-}
+  text?: string;
+  sender: string;
+  timestamp: string;
+  attachments?: Array<{
+    type: string;
+    payload: {
+      url: string;
+    };
+  }>;
+  is_deleted?: boolean;
+  is_echo?: boolean;
+  error?: never;
+};
 
 export type Message = {
   id: string;
   text: string;
-  sender: "me" | "them";
+  sender: string | undefined;
   timestamp: string;
+  attachments?: Array<{
+    type: string;
+    payload: {
+      url: string;
+    };
+  }>;
 }
