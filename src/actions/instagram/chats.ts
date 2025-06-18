@@ -36,40 +36,36 @@ export async function fetchInstagramChats() {
 
     const chats = data.map((conversation: InstagramConversation) => {
       let lastMessage = "No messages yet";
-      if (conversation.messages && conversation.messages.data && conversation.messages.data.length > 0) {
-        const lastMsg = conversation.messages.data[0];
+      const lastMsg = conversation.messages?.data?.[0];
+      
+      if (lastMsg?.message) {
+        lastMessage = lastMsg.message.length > 30 
+          ? lastMsg.message.substring(0, 30) + '...' 
+          : lastMsg.message;
+      } else if (lastMsg?.attachments?.data?.[0]) {
+        const attachment = lastMsg.attachments.data[0];
+        const mimeType = attachment.mime_type || '';
         
-        if (lastMsg.message) {
-          lastMessage = lastMsg.message.length > 30 
-            ? lastMsg.message.substring(0, 30) + '...' 
-            : lastMsg.message;
-        } else if (lastMsg.attachments && lastMsg.attachments.data && lastMsg.attachments.data.length > 0) {
-          const attachmentType = lastMsg.attachments.data[0].mime_type || '';
-          
-          if (attachmentType.startsWith('image/')) {
-            lastMessage = '[Image]';
-          } else if (attachmentType.startsWith('video/')) {
-            lastMessage = '[Video]';
-          } else if (attachmentType.startsWith('audio/')) {
-            lastMessage = '[Audio]';
-          } else {
-            lastMessage = '[Attachment]';
-          }
+        if (mimeType.startsWith('image/')) {
+          lastMessage = '[Image]';
+        } else if (mimeType.startsWith('video/')) {
+          lastMessage = '[Video]';
+        } else if (mimeType.startsWith('audio/')) {
+          lastMessage = '[Audio]';
+        } else {
+          lastMessage = '[Attachment]';
         }
       }
 
-      const otherParticipant = conversation.participants && 
-        conversation.participants.data && 
-        conversation.participants.data.length > 1 ? 
-        conversation.participants.data[1] : 
-        { username: 'Unknown', id: '', profile_picture: undefined };
+      const otherParticipant = conversation.participants?.data?.length > 1
+        ? conversation.participants.data[1]
+        : { username: 'Unknown', id: '', profile_picture: undefined };
 
       return {
         id: conversation.id,
         username: otherParticipant.username,
         lastMessage,
         unreadCount: conversation.unread_count || 0,
-        avatar: otherParticipant.profile_picture,
       };
     });
 
@@ -87,12 +83,16 @@ export async function fetchChatMessages(chatId: string) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");
 
+  if (!accessToken) {
+    return { error: "Not authenticated" };
+  }
+
   try {
     const response = await fetch(
       `https://graph.instagram.com/v23.0/${chatId}/messages?fields=message,from,created_time,attachments`,
       {
         headers: {
-          "Authorization": `Bearer ${accessToken?.value}`
+          "Authorization": `Bearer ${accessToken.value}`
         }
       }
     );
@@ -109,18 +109,30 @@ export async function fetchChatMessages(chatId: string) {
       const formattedMessage = {
         id: message.id,
         text: message.message || "",
-        sender: message.from.username || message.from.id,
+        sender: message.from?.username || message.from?.id,
         timestamp: message.created_time,
       } as Message;
 
-      if (message.attachments && message.attachments.data && message.attachments.data.length > 0) {
-        formattedMessage.attachments = message.attachments.data.map(attachment => ({
-          type: attachment.mime_type.startsWith('image/') ? 'image' : 
-                attachment.mime_type.startsWith('video/') ? 'video' : 'file',
-          payload: {
-            url: attachment.url
+      if (message.attachments?.data?.[0]) {
+        formattedMessage.attachments = message.attachments.data.map(attachment => {
+          const mimeType = attachment.mime_type || '';
+          let type = 'file';
+          
+          if (mimeType.startsWith('image/')) {
+            type = 'image';
+          } else if (mimeType.startsWith('video/')) {
+            type = 'video';
+          } else if (mimeType.startsWith('audio/')) {
+            type = 'audio';
           }
-        }));
+          
+          return {
+            type,
+            payload: {
+              url: attachment.url
+            }
+          };
+        });
       }
 
       return formattedMessage;

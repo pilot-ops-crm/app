@@ -66,7 +66,7 @@ export type InstagramMessage = {
 export type Message = {
   id: string;
   text: string;
-  sender: string | undefined;
+  sender: string;
   timestamp: string;
   attachments?: Array<{
     type: string;

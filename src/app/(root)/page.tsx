@@ -29,34 +29,12 @@ import {
   getCurrentUser,
 } from "@/actions/instagram/chats";
 
-type InstagramMessage = {
-  id: string;
-  text?: string;
-  sender: string;
-  timestamp: string;
-  attachments?: Array<{
-    type: string;
-    payload: {
-      url: string;
-    };
-  }>;
-  is_deleted?: boolean;
-  is_echo?: boolean;
-  error?: never;
-};
-
-type Chat = {
-  id: string;
-  username: string;
-  lastMessage: string;
-  unreadCount: number;
-  participants?: string[];
-};
+import { Chat, Message } from "@/types";
 
 export default function ChatPage() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
-  const [messages, setMessages] = useState<InstagramMessage[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<string>("");
@@ -131,7 +109,7 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat) return;
 
-    const tempMessage: InstagramMessage = {
+    const tempMessage: Message = {
       id: `temp-${Date.now()}`,
       text: newMessage,
       sender: currentUser,
@@ -145,7 +123,7 @@ export default function ChatPage() {
       const result = await sendChatMessage(selectedChat, newMessage);
 
       if ("id" in result && result.id) {
-        const serverMessage: InstagramMessage = {
+        const serverMessage: Message = {
           id: result.id,
           text: result.text || newMessage,
           sender: currentUser,
@@ -178,7 +156,7 @@ export default function ChatPage() {
     return senderId === currentUser;
   };
 
-  const getMessageContent = (message: InstagramMessage) => {
+  const getMessageContent = (message: Message) => {
     if (message.text) {
       return message.text;
     }

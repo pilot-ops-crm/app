@@ -28,8 +28,8 @@ export async function GET(
 
     const messages: Message[] = data.map((message: InstagramMessage) => ({
       id: message.id,
-      text: message.message,
-      sender: message.from.username,
+      text: message.message!,
+      sender: message.from.username!,
       timestamp: message.created_time,
     }));
 
