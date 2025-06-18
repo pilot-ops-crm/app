@@ -28,7 +28,30 @@ import {
   sendChatMessage,
   getCurrentUser,
 } from "@/actions/instagram/chats";
-import { Chat, InstagramMessage } from "@/types";
+
+type InstagramMessage = {
+  id: string;
+  text?: string;
+  sender: string;
+  timestamp: string;
+  attachments?: Array<{
+    type: string;
+    payload: {
+      url: string;
+    };
+  }>;
+  is_deleted?: boolean;
+  is_echo?: boolean;
+  error?: never;
+};
+
+type Chat = {
+  id: string;
+  username: string;
+  lastMessage: string;
+  unreadCount: number;
+  participants?: string[];
+};
 
 export default function ChatPage() {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -216,7 +239,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      <div className="block w-80 border-r">
+      <div className="hidden md:block w-80 border-r">
         <div className="p-4 border-b">
           <h2 className="text-xl font-semibold">Messages</h2>
         </div>
@@ -300,6 +323,7 @@ export default function ChatPage() {
                         ? message.sender[0].toUpperCase()
                         : "U"
                     }
+                    // src={chats.find((c) => c.id === selectedChat)?.avatar}
                   />
                   <ChatBubbleMessage
                     variant={

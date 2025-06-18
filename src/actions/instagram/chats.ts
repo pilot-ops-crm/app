@@ -39,12 +39,12 @@ export async function fetchInstagramChats() {
       if (conversation.messages && conversation.messages.data && conversation.messages.data.length > 0) {
         const lastMsg = conversation.messages.data[0];
         
-        if (lastMsg.text) {
-          lastMessage = lastMsg.text.length > 30 
-            ? lastMsg.text.substring(0, 30) + '...' 
-            : lastMsg.text;
-        } else if (lastMsg.attachments && lastMsg.attachments.length > 0) {
-          const attachmentType = lastMsg.attachments[0].type || '';
+        if (lastMsg.message) {
+          lastMessage = lastMsg.message.length > 30 
+            ? lastMsg.message.substring(0, 30) + '...' 
+            : lastMsg.message;
+        } else if (lastMsg.attachments && lastMsg.attachments.data && lastMsg.attachments.data.length > 0) {
+          const attachmentType = lastMsg.attachments.data[0].mime_type || '';
           
           if (attachmentType.startsWith('image/')) {
             lastMessage = '[Image]';
@@ -108,16 +108,17 @@ export async function fetchChatMessages(chatId: string) {
     const messages = data.map((message: InstagramMessage) => {
       const formattedMessage = {
         id: message.id,
-        text: message.text || "",
-        sender: message.sender,
-        timestamp: message.timestamp,
+        text: message.message || "",
+        sender: message.from.username || message.from.id,
+        timestamp: message.created_time,
       } as Message;
 
-      if (message.attachments && message.attachments.length > 0) {
-        formattedMessage.attachments = message.attachments.map(attachment => ({
-          type: attachment.type,
+      if (message.attachments && message.attachments.data && message.attachments.data.length > 0) {
+        formattedMessage.attachments = message.attachments.data.map(attachment => ({
+          type: attachment.mime_type.startsWith('image/') ? 'image' : 
+                attachment.mime_type.startsWith('video/') ? 'video' : 'file',
           payload: {
-            url: attachment.payload.url
+            url: attachment.url
           }
         }));
       }

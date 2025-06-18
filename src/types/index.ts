@@ -43,8 +43,7 @@ export type Chat = {
   username: string;
   lastMessage: string;
   unreadCount: number;
-  participants?: string[];
-};
+}
 
 export type InstagramMessageSender = {
   id: string;
@@ -53,19 +52,16 @@ export type InstagramMessageSender = {
 
 export type InstagramMessage = {
   id: string;
-  text?: string;
-  sender: string;
-  timestamp: string;
-  attachments?: Array<{
-    type: string;
-    payload: {
+  message: string;
+  from: InstagramMessageSender;
+  created_time: string;
+  attachments?: {
+    data: Array<{
+      mime_type: string;
       url: string;
-    };
-  }>;
-  is_deleted?: boolean;
-  is_echo?: boolean;
-  error?: never;
-};
+    }>;
+  };
+}
 
 export type Message = {
   id: string;

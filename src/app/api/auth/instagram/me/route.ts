@@ -9,12 +9,8 @@ export async function GET() {
     if (instagramToken) {
       try {
         const response = await fetch(
-          `https://graph.instagram.com/v23.0/me?fields=username,id`,
-          {
-            headers: {
-              Authorization: `Bearer ${instagramToken.value}`,
-            },
-          }
+          `https://graph.instagram.com/me?fields=id,username&access_token=${instagramToken.value}`,
+          { cache: "no-store" }
         );
         
         if (!response.ok) {
