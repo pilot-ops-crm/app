@@ -41,6 +41,7 @@ export type InstagramConversation = {
 export type Chat = {
   id: string;
   username: string;
+  participantId: string;
   lastMessage: string;
   unreadCount: number;
 }
@@ -65,7 +66,7 @@ export type InstagramMessage = {
 
 export type Message = {
   id: string;
-  text: string;
+  text?: string;
   sender: string;
   timestamp: string;
   attachments?: Array<{

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
-import { Send, Menu } from "lucide-react";
+import { Send, Menu, Image as ImageIcon, Video, Sticker, Instagram } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -27,6 +27,10 @@ import {
   fetchChatMessages,
   sendChatMessage,
   getCurrentUser,
+  sendImageMessage,
+  sendVideoMessage,
+  sendStickerMessage,
+  sendInstagramPost,
 } from "@/actions/instagram/chats";
 
 import { Chat, Message } from "@/types";
@@ -39,6 +43,9 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<string>("");
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const [mediaUrl, setMediaUrl] = useState("");
+  const [showMediaInput, setShowMediaInput] = useState(false);
+  const [mediaType, setMediaType] = useState<"image" | "video" | "sticker" | "post">("image");
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -148,6 +155,77 @@ export default function ChatPage() {
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Error sending message");
+      setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
+    }
+  };
+
+  const handleSendMedia = async () => {
+    if (!mediaUrl.trim() || !selectedChat) return;
+
+    const tempMessage: Message = {
+      id: `temp-${Date.now()}`,
+      sender: currentUser,
+      timestamp: new Date().toISOString(),
+      attachments: [
+        {
+          type: mediaType,
+          payload: { url: mediaUrl }
+        }
+      ]
+    };
+
+    setMessages((prev) => [...prev, tempMessage]);
+    setMediaUrl("");
+    setShowMediaInput(false);
+
+    try {
+      let result;
+      switch (mediaType) {
+        case "image":
+          result = await sendImageMessage(selectedChat, mediaUrl);
+          break;
+        case "video":
+          result = await sendVideoMessage(selectedChat, mediaUrl);
+          break;
+        case "sticker":
+          result = await sendStickerMessage(selectedChat, mediaUrl);
+          break;
+        case "post":
+          result = await sendInstagramPost(selectedChat, mediaUrl);
+          break;
+      }
+
+      if (result && "id" in result) {
+        const serverMessage: Message = {
+          id: result.id,
+          sender: currentUser,
+          timestamp: result.timestamp || new Date().toISOString(),
+          attachments: [
+            {
+              type: mediaType,
+              payload: { url: mediaUrl }
+            }
+          ]
+        };
+
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === tempMessage.id ? serverMessage : msg))
+        );
+
+        setChats((prev) =>
+          prev.map((chat) =>
+            chat.id === selectedChat
+              ? { ...chat, lastMessage: `[${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)}]` }
+              : chat
+          )
+        );
+      } else if (result && "error" in result) {
+        toast.error(result.error);
+        setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
+      }
+    } catch (error) {
+      console.error(`Error sending ${mediaType}:`, error);
+      toast.error(`Error sending ${mediaType}`);
       setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
     }
   };
@@ -331,6 +409,27 @@ export default function ChatPage() {
           </div>
 
           <div className="p-4 border-t bg-background">
+            {showMediaInput && (
+              <div className="mb-2 flex space-x-2">
+                <div className="flex-1 relative border rounded-lg">
+                  <input
+                    type="text"
+                    value={mediaUrl}
+                    onChange={(e) => setMediaUrl(e.target.value)}
+                    placeholder={`Enter ${mediaType} URL or ID...`}
+                    className="w-full p-2 bg-card border-0 rounded-lg"
+                  />
+                </div>
+                <Button onClick={handleSendMedia} size="sm">Send</Button>
+                <Button 
+                  onClick={() => setShowMediaInput(false)} 
+                  variant="outline" 
+                  size="sm"
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
             <div className="relative border rounded-2xl">
               <ChatInput
                 value={newMessage}
@@ -344,6 +443,52 @@ export default function ChatPage() {
                   }
                 }}
               />
+              <div className="absolute right-12 top-1/2 -translate-y-1/2 flex space-x-1">
+                <button
+                  onClick={() => {
+                    setMediaType("image");
+                    setShowMediaInput(true);
+                  }}
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                  aria-label="Send image"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setMediaType("video");
+                    setShowMediaInput(true);
+                  }}
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                  aria-label="Send video"
+                >
+                  <Video className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setMediaType("sticker");
+                    setShowMediaInput(true);
+                  }}
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                  aria-label="Send sticker"
+                >
+                  <Sticker className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setMediaType("post");
+                    setShowMediaInput(true);
+                  }}
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+                  aria-label="Send Instagram post"
+                >
+                  <Instagram className="h-4 w-4" />
+                </button>
+              </div>
               <button
                 onClick={handleSendMessage}
                 type="button"
