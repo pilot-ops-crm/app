@@ -90,7 +90,7 @@ export async function fetchChatMessages(chatId: string) {
 
   try {
     const response = await fetch(
-      `https://graph.instagram.com/v23.0/${chatId}/messages?fields=message,from,created_time,attachments`,
+      `https://graph.instagram.com/v23.0/${chatId}/messages?fields=message,from,created_time,attachments{mime_type,url,name,title,type,image_data,video_data,file_url,audio_url,asset_url}`,
       {
         headers: {
           "Authorization": `Bearer ${accessToken.value}`
@@ -105,6 +105,8 @@ export async function fetchChatMessages(chatId: string) {
     }
 
     const { data } = await response.json();
+    console.log("data", data);
+    console.log("Raw message data from Instagram API:", JSON.stringify(data.slice(0, 2), null, 2));
 
     const messages = data.map((message: InstagramMessage) => {
       const formattedMessage = {
@@ -115,22 +117,44 @@ export async function fetchChatMessages(chatId: string) {
       } as Message;
 
       if (message.attachments?.data?.[0]) {
+        console.log("Processing attachment:", JSON.stringify(message.attachments.data[0], null, 2));
+        
         formattedMessage.attachments = message.attachments.data.map(attachment => {
           const mimeType = attachment.mime_type || '';
-          let type = 'file';
+          let type = attachment.type || 'file';
           
-          if (mimeType.startsWith('image/')) {
+          let url = (attachment.image_data?.url) ||
+                   attachment.url || 
+                   attachment.file_url || 
+                   attachment.audio_url || 
+                   attachment.asset_url ||
+                   (attachment.video_data?.url) ||
+                   '';
+          
+          if (attachment.image_data?.url) {
+            type = 'image';
+          } else if (mimeType.startsWith('image/')) {
             type = 'image';
           } else if (mimeType.startsWith('video/')) {
             type = 'video';
           } else if (mimeType.startsWith('audio/')) {
             type = 'audio';
+          } else if (type === 'template' || type === 'sticker') {
+            type = attachment.type || 'file';
+          } else if (type === 'story_mention' || type === 'story_share') {
+            type = 'story';
+            if (attachment.image_data?.url) {
+              url = attachment.image_data.url;
+            }
+          } else if (type === 'share') {
+            type = 'post';
           }
           
           return {
             type,
             payload: {
-              url: attachment.url
+              url: url,
+              title: attachment.title || attachment.name || type.charAt(0).toUpperCase() + type.slice(1)
             }
           };
         });
@@ -220,6 +244,10 @@ export async function sendImageMessage(chatId: string, imageUrl: string) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");
 
+  if (!accessToken) {
+    return { error: "Not authenticated" };
+  }
+
   try {
     const participantId = await getParticipantId(chatId);
     console.log("Sending image to participant:", participantId);
@@ -230,7 +258,7 @@ export async function sendImageMessage(chatId: string, imageUrl: string) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken?.value}`
+          "Authorization": `Bearer ${accessToken.value}`
         },
         body: JSON.stringify({
           recipient: { id: participantId },
@@ -258,8 +286,16 @@ export async function sendImageMessage(chatId: string, imageUrl: string) {
 
     return {
       id: data.message_id,
-      attachment: { type: "image", url: imageUrl },
       timestamp: new Date().toISOString(),
+      attachments: [
+        {
+          type: "image",
+          payload: {
+            url: imageUrl,
+            title: "Image"
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error("Error sending Instagram image:", error);
@@ -274,6 +310,10 @@ export async function sendVideoMessage(chatId: string, videoUrl: string) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");
 
+  if (!accessToken) {
+    return { error: "Not authenticated" };
+  }
+
   try {
     const participantId = await getParticipantId(chatId);
     console.log("Sending video to participant:", participantId);
@@ -284,7 +324,7 @@ export async function sendVideoMessage(chatId: string, videoUrl: string) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken?.value}`
+          "Authorization": `Bearer ${accessToken.value}`
         },
         body: JSON.stringify({
           recipient: { id: participantId },
@@ -312,8 +352,16 @@ export async function sendVideoMessage(chatId: string, videoUrl: string) {
 
     return {
       id: data.message_id,
-      attachment: { type: "video", url: videoUrl },
       timestamp: new Date().toISOString(),
+      attachments: [
+        {
+          type: "video",
+          payload: {
+            url: videoUrl,
+            title: "Video"
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error("Error sending Instagram video:", error);
@@ -328,6 +376,10 @@ export async function sendStickerMessage(chatId: string, stickerId: string) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");
 
+  if (!accessToken) {
+    return { error: "Not authenticated" };
+  }
+
   try {
     const participantId = await getParticipantId(chatId);
     console.log("Sending sticker to participant:", participantId);
@@ -338,7 +390,7 @@ export async function sendStickerMessage(chatId: string, stickerId: string) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken?.value}`
+          "Authorization": `Bearer ${accessToken.value}`
         },
         body: JSON.stringify({
           recipient: { id: participantId },
@@ -346,8 +398,13 @@ export async function sendStickerMessage(chatId: string, stickerId: string) {
             attachment: {
               type: "template",
               payload: {
-                template_type: "sticker",
-                sticker_id: stickerId
+                template_type: "generic",
+                elements: [
+                  {
+                    title: "Sticker",
+                    image_url: stickerId
+                  }
+                ]
               }
             }
           }
@@ -367,8 +424,16 @@ export async function sendStickerMessage(chatId: string, stickerId: string) {
 
     return {
       id: data.message_id,
-      attachment: { type: "sticker", stickerId },
       timestamp: new Date().toISOString(),
+      attachments: [
+        {
+          type: "sticker",
+          payload: {
+            url: stickerId,
+            title: "Sticker"
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error("Error sending Instagram sticker:", error);
@@ -436,9 +501,13 @@ export async function sendInstagramPost(chatId: string, postId: string) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");
 
+  if (!accessToken) {
+    return { error: "Not authenticated" };
+  }
+
   try {
     const participantId = await getParticipantId(chatId);
-    console.log("Sending post to participant:", participantId);
+    console.log("Sharing Instagram post to participant:", participantId);
     
     const response = await fetch(
       `https://graph.instagram.com/v23.0/me/messages`,
@@ -446,15 +515,21 @@ export async function sendInstagramPost(chatId: string, postId: string) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken?.value}`
+          "Authorization": `Bearer ${accessToken.value}`
         },
         body: JSON.stringify({
           recipient: { id: participantId },
           message: {
             attachment: {
-              type: "MEDIA_SHARE",
+              type: "template",
               payload: {
-                id: postId
+                template_type: "media",
+                elements: [
+                  {
+                    media_type: "instagram_post",
+                    url: postId
+                  }
+                ]
               }
             }
           }
@@ -465,7 +540,7 @@ export async function sendInstagramPost(chatId: string, postId: string) {
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Instagram API error:", errorData);
-      throw new Error(`Failed to send Instagram post: ${JSON.stringify(errorData)}`);
+      throw new Error(`Failed to share post: ${JSON.stringify(errorData)}`);
     }
 
     const data = await response.json();
@@ -474,12 +549,20 @@ export async function sendInstagramPost(chatId: string, postId: string) {
 
     return {
       id: data.message_id,
-      attachment: { type: "post", postId },
       timestamp: new Date().toISOString(),
+      attachments: [
+        {
+          type: "post",
+          payload: {
+            url: postId,
+            title: "Instagram Post"
+          }
+        }
+      ]
     };
   } catch (error) {
-    console.error("Error sending Instagram post:", error);
-    return { error: "Failed to send post" };
+    console.error("Error sharing Instagram post:", error);
+    return { error: "Failed to share post" };
   }
 }
 

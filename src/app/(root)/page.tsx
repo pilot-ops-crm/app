@@ -169,7 +169,10 @@ export default function ChatPage() {
       attachments: [
         {
           type: mediaType,
-          payload: { url: mediaUrl }
+          payload: { 
+            url: mediaUrl,
+            title: mediaType.charAt(0).toUpperCase() + mediaType.slice(1)
+          }
         }
       ]
     };
@@ -200,10 +203,13 @@ export default function ChatPage() {
           id: result.id,
           sender: currentUser,
           timestamp: result.timestamp || new Date().toISOString(),
-          attachments: [
+          attachments: result.attachments || [
             {
               type: mediaType,
-              payload: { url: mediaUrl }
+              payload: { 
+                url: mediaUrl,
+                title: mediaType.charAt(0).toUpperCase() + mediaType.slice(1)
+              }
             }
           ]
         };
@@ -241,24 +247,47 @@ export default function ChatPage() {
 
     if (message.attachments && message.attachments.length > 0) {
       const attachment = message.attachments[0];
+      
+      if (!attachment.payload.url) {
+        console.warn("Missing URL for attachment:", attachment);
+        return `[${attachment.type.charAt(0).toUpperCase() + attachment.type.slice(1)}]`;
+      }
+      
       switch (attachment.type) {
         case "image":
           return (
-            <Image
-              src={attachment.payload.url}
-              alt="Image"
-              width={200}
-              height={200}
-              className="rounded-lg object-cover max-w-[250px]"
-            />
+            <div className="relative">
+              <Image
+                src={attachment.payload.url}
+                alt={attachment.payload.title || "Image"}
+                width={300}
+                height={300}
+                className="rounded-lg object-contain max-w-[300px]"
+                onError={(e) => {
+                  console.error("Image failed to load:", attachment.payload.url);
+                  (e.target as HTMLImageElement).src = "/file.svg";
+                  (e.target as HTMLImageElement).className = "w-8 h-8";
+                }}
+              />
+            </div>
           );
         case "video":
           return (
-            <video
-              src={attachment.payload.url}
-              controls
-              className="rounded-lg max-w-[250px]"
-            />
+            <div className="relative">
+              <video
+                src={attachment.payload.url}
+                controls
+                className="rounded-lg max-w-[250px]"
+                onError={(e) => {
+                  console.error("Video failed to load:", attachment.payload.url);
+                  e.currentTarget.style.display = "none";
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = `<div class="flex items-center gap-2 text-blue-500"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> Video</div>`;
+                  }
+                }}
+              />
+            </div>
           );
         case "audio":
           return (
@@ -266,7 +295,74 @@ export default function ChatPage() {
               src={attachment.payload.url}
               controls
               className="rounded-lg max-w-[250px]"
+              onError={(e) => {
+                console.error("Audio failed to load:", attachment.payload.url);
+                e.currentTarget.style.display = "none";
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  parent.innerHTML = `<div class="flex items-center gap-2 text-blue-500"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg> Audio</div>`;
+                }
+              }}
             />
+          );
+        case "sticker":
+          return (
+            <div className="relative">
+              <Image
+                src={attachment.payload.url}
+                alt={attachment.payload.title || "Sticker"}
+                width={150}
+                height={150}
+                className="object-contain"
+                onError={(e) => {
+                  console.error("Sticker failed to load:", attachment.payload.url);
+                  (e.target as HTMLImageElement).src = "/file.svg";
+                  (e.target as HTMLImageElement).className = "w-8 h-8";
+                }}
+              />
+            </div>
+          );
+        case "story":
+          return (
+            <div className="flex flex-col items-center">
+              <div className="mb-1 text-sm text-neutral-500">Instagram Story</div>
+              <Image
+                src={attachment.payload.url}
+                alt={attachment.payload.title || "Story"}
+                width={200}
+                height={200}
+                className="rounded-lg object-cover max-w-[250px]"
+                onError={(e) => {
+                  console.error("Story image failed to load:", attachment.payload.url);
+                  (e.target as HTMLImageElement).src = "/file.svg";
+                  (e.target as HTMLImageElement).className = "w-8 h-8";
+                }}
+              />
+            </div>
+          );
+        case "post":
+          return (
+            <a
+              href={attachment.payload.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline flex items-center gap-2"
+            >
+              <Instagram className="h-4 w-4" />
+              {attachment.payload.title || "Instagram Post"}
+            </a>
+          );
+        case "template":
+          return (
+            <a
+              href={attachment.payload.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline flex items-center gap-2"
+            >
+              <Instagram className="h-4 w-4" />
+              {attachment.payload.title || "Instagram Content"}
+            </a>
           );
         default:
           return (
@@ -274,9 +370,16 @@ export default function ChatPage() {
               href={attachment.payload.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-500 underline"
+              className="text-blue-500 underline flex items-center gap-2"
             >
-              [Attachment]
+              <Image
+                src="/file.svg"
+                alt="File"
+                width={16}
+                height={16}
+                className="mr-1"
+              />
+              {attachment.payload.title || attachment.type || "Attachment"}
             </a>
           );
       }

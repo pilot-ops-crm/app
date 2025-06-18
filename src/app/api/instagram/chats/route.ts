@@ -65,6 +65,7 @@ export async function GET() {
       return {
         id: conversation.id,
         username: otherParticipant.username,
+        participantId: otherParticipant.id,
         lastMessage,
         unreadCount: conversation.unread_count || 0,
       };

@@ -58,9 +58,34 @@ export type InstagramMessage = {
   created_time: string;
   attachments?: {
     data: Array<{
-      mime_type: string;
-      url: string;
+      mime_type?: string;
+      url?: string;
+      name?: string;
+      title?: string;
+      type?: string;
+      file_url?: string;
+      audio_url?: string;
+      asset_url?: string;
+      image_data?: {
+        url: string;
+        width: number;
+        height: number;
+        max_width: number;
+        max_height: number;
+        preview_url?: string;
+      };
+      video_data?: {
+        url: string;
+        width?: number;
+        height?: number;
+      };
     }>;
+    paging?: {
+      cursors: {
+        before: string;
+        after: string;
+      };
+    };
   };
 }
 
@@ -73,6 +98,7 @@ export type Message = {
     type: string;
     payload: {
       url: string;
+      title?: string;
     };
   }>;
 }
