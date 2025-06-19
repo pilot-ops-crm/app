@@ -28,7 +28,7 @@ const ChatMessageList = React.forwardRef<HTMLDivElement, ChatMessageListProps>(
           onTouchMove={disableAutoScroll}
           {...props}
         >
-          <div className="flex flex-col gap-6">{children}</div>
+          <div className="flex flex-col gap-3">{children}</div>
         </div>
 
         {!isAtBottom && (
@@ -38,7 +38,7 @@ const ChatMessageList = React.forwardRef<HTMLDivElement, ChatMessageListProps>(
             }}
             size="icon"
             variant="outline"
-            className="absolute bottom-2 left-1/2 transform -translate-x-1/2 inline-flex rounded-full shadow-md"
+            className="absolute bottom-4 left-1/2 transform -translate-x-1/2 inline-flex rounded-full shadow-md"
             aria-label="Scroll to bottom"
           >
             <ArrowDown className="h-4 w-4" />

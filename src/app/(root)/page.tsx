@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
-import { Send, Menu, Image as ImageIcon, Video, Sticker, Instagram, Heart, Loader2 } from "lucide-react";
+import { Send, Menu, Image as ImageIcon, Video, Sticker, Instagram, Heart, Loader2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -36,6 +36,7 @@ import {
 } from "@/actions/instagram/chats";
 
 import { Chat, Message } from "@/types";
+import Link from "next/link";
 
 export default function ChatPage() {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -550,9 +551,16 @@ export default function ChatPage() {
                 <Menu className="h-5 w-5 text-primary" />
               </Button>
             </div>
-            <h1 className="text-xl font-semibold text-primary">
-              {chats.find((chat) => chat.id === selectedChat)?.username}
-            </h1>
+            <div className="flex items-center gap-2 justify-between w-full">
+              <h1 className="text-xl font-semibold">
+                {chats.find((chat) => chat.id === selectedChat)?.username}
+              </h1>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`https://www.instagram.com/${chats.find((chat) => chat.id === selectedChat)?.username}`} target="_blank">
+                  View Profile<ExternalLink className="h-4 w-4 ml-1" />
+                </Link>
+              </Button>
+            </div>
           </header>
 
           <div className="flex-1 overflow-hidden">

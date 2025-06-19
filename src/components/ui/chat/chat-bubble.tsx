@@ -72,7 +72,7 @@ const ChatBubbleAvatar = React.forwardRef<
 ChatBubbleAvatar.displayName = "ChatBubbleAvatar";
 
 // ChatBubbleMessage
-const chatBubbleMessageVariants = cva("p-4", {
+const chatBubbleMessageVariants = cva("p-3", {
   variants: {
     variant: {
       received:
@@ -134,7 +134,7 @@ const ChatBubbleTimestamp = React.forwardRef<
   HTMLDivElement,
   ChatBubbleTimestampProps
 >(({ timestamp, className, ...props }, ref) => (
-  <div className={cn("text-xs mt-2 text-right", className)} ref={ref} {...props}>
+  <div className={cn("text-xs mt-2 text-right invisible group-hover:visible", className)} ref={ref} {...props}>
     {timestamp}
   </div>
 ));
