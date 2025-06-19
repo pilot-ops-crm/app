@@ -1,6 +1,6 @@
 import { UUID } from "crypto";
 
-export type User = {
+export interface User {
   id: UUID;
   email: string;
   name?: string | null;
@@ -20,66 +20,21 @@ export type User = {
   updated_at: string; // timestamp in ISO format
 };
 
-type InstagramParticipant = {
+export interface InstagramParticipant {
   username: string;
   id: string;
   profile_picture?: string;
 }
 
-export type InstagramConversation = {
+export interface InstagramConversation {
   id: string;
-  participants: {
+  unread_count?: number;
+  updated_time: string;
+  participants?: {
     data: InstagramParticipant[];
   };
-  updated_time: string;
-  messages: {
+  messages?: {
     data: InstagramMessage[];
-  };
-  unread_count: number;
-}
-
-export type Chat = {
-  id: string;
-  username: string;
-  participantId: string;
-  lastMessage: string;
-  unreadCount: number;
-}
-
-export type InstagramMessageSender = {
-  id: string;
-  username?: string;
-}
-
-export type InstagramMessage = {
-  id: string;
-  message: string;
-  from: InstagramMessageSender;
-  created_time: string;
-  attachments?: {
-    data: Array<{
-      mime_type?: string;
-      url?: string;
-      name?: string;
-      title?: string;
-      type?: string;
-      file_url?: string;
-      audio_url?: string;
-      asset_url?: string;
-      image_data?: {
-        url: string;
-        width: number;
-        height: number;
-        max_width: number;
-        max_height: number;
-        preview_url?: string;
-      };
-      video_data?: {
-        url: string;
-        width?: number;
-        height?: number;
-      };
-    }>;
     paging?: {
       cursors: {
         before: string;
@@ -89,16 +44,67 @@ export type InstagramMessage = {
   };
 }
 
-export type Message = {
+export interface Chat {
+  id: string;
+  username: string;
+  participantId: string;
+  lastMessage: string;
+  unreadCount: number;
+}
+
+export interface InstagramMessage {
+  id: string;
+  from?: {
+    id: string;
+    username?: string;
+  };
+  message?: string;
+  created_time: string;
+  attachments?: {
+    data: Array<{
+      mime_type?: string;
+      name?: string;
+      title?: string;
+      type?: string;
+      url?: string;
+      image_data?: {
+        url?: string;
+      };
+      video_data?: {
+        url?: string;
+      };
+      file_url?: string;
+      audio_url?: string;
+      asset_url?: string;
+    }>;
+  };
+  reactions?: {
+    data: Array<{
+      id: string;
+      username?: string;
+      reaction?: string;
+    }>;
+  };
+}
+
+export interface MessageAttachment {
+  type: string;
+  payload: {
+    url: string;
+    title?: string;
+  };
+}
+
+export interface MessageReaction {
+  type: string;
+  sender: string;
+}
+
+export interface Message {
   id: string;
   text?: string;
   sender: string;
   timestamp: string;
-  attachments?: Array<{
-    type: string;
-    payload: {
-      url: string;
-      title?: string;
-    };
-  }>;
+  attachments?: MessageAttachment[];
+  reactions?: MessageReaction[];
 }

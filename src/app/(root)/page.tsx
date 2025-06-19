@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
-import { Send, Menu, Image as ImageIcon, Video, Sticker, Instagram } from "lucide-react";
+import { Send, Menu, Image as ImageIcon, Video, Sticker, Instagram, Heart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -31,6 +31,8 @@ import {
   sendVideoMessage,
   sendStickerMessage,
   sendInstagramPost,
+  reactToMessage,
+  removeReaction,
 } from "@/actions/instagram/chats";
 
 import { Chat, Message } from "@/types";
@@ -46,6 +48,7 @@ export default function ChatPage() {
   const [mediaUrl, setMediaUrl] = useState("");
   const [showMediaInput, setShowMediaInput] = useState(false);
   const [mediaType, setMediaType] = useState<"image" | "video" | "sticker" | "post">("image");
+  const [reactingToMessage, setReactingToMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -388,6 +391,90 @@ export default function ChatPage() {
     return "[Message content unavailable]";
   };
 
+  const renderReactions = (message: Message) => {
+    if (!message.reactions || message.reactions.length === 0) return null;
+    
+    return (
+      <div className="flex items-center text-xs mt-1">
+        <div className="bg-foreground/5 rounded-full px-2 py-1 flex items-center">
+          <Heart className="h-3 w-3 text-red-500 mr-1" fill="currentColor" />
+          <span>{message.reactions.length}</span>
+        </div>
+      </div>
+    );
+  };
+
+  const handleReaction = async (messageId: string) => {
+    if (!selectedChat) return;
+    
+    setReactingToMessage(messageId);
+
+    try {
+      const message = messages.find(msg => msg.id === messageId);
+      const hasReacted = message?.reactions?.some(r => r.sender === currentUser);
+
+      if (hasReacted) {
+        const result = await removeReaction(selectedChat, messageId);
+        console.log("Remove reaction result:", result);
+        
+        if (result.success) {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === messageId 
+                ? {
+                    ...msg, 
+                    reactions: (msg.reactions || []).filter(r => r.sender !== currentUser)
+                  }
+                : msg
+            )
+          );
+          toast.success("Reaction removed");
+        } else if ("error" in result) {
+          if (result.errorCode === "MESSAGE_TOO_OLD") {
+            toast.error("Instagram only allows reactions to recent messages", {
+              description: "This limitation is imposed by Instagram's API"
+            });
+          } else {
+            toast.error(result.error);
+          }
+        }
+      } else {
+        const result = await reactToMessage(selectedChat, messageId, "love");
+        console.log("Add reaction result:", result);
+        
+        if (result.success) {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === messageId 
+                ? {
+                    ...msg, 
+                    reactions: [
+                      ...(msg.reactions || []),
+                      { type: "love", sender: currentUser }
+                    ]
+                  }
+                : msg
+            )
+          );
+          toast.success("Reaction added");
+        } else if ("error" in result) {
+          if (result.errorCode === "MESSAGE_TOO_OLD") {
+            toast.error("Instagram only allows reactions to recent messages", {
+              description: "This limitation is imposed by Instagram's API"
+            });
+          } else {
+            toast.error(result.error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error handling reaction:", error);
+      toast.error("Failed to handle reaction");
+    } finally {
+      setReactingToMessage(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -474,7 +561,7 @@ export default function ChatPage() {
                 <ChatBubble
                   key={`${message.id}-${i}`}
                   variant={isCurrentUser(message.sender) ? "sent" : "received"}
-                  className={isCurrentUser(message.sender) ? "max-w-[85%]" : ""}
+                  className={`group ${isCurrentUser(message.sender) ? "max-w-[85%]" : ""}`}
                 >
                   <ChatBubbleAvatar
                     fallback={
@@ -484,27 +571,52 @@ export default function ChatPage() {
                     }
                     // src={chats.find((c) => c.id === selectedChat)?.avatar}
                   />
-                  <ChatBubbleMessage
-                    variant={
-                      isCurrentUser(message.sender) ? "sent" : "received"
-                    }
-                    className={
-                      isCurrentUser(message.sender)
-                        ? "bg-primary text-primary-foreground rounded-[20px] rounded-tr-none"
-                        : "bg-secondary text-secondary-foreground rounded-[20px] rounded-tl-none"
-                    }
-                  >
-                    {getMessageContent(message)}
-                  </ChatBubbleMessage>
-                  <ChatBubbleTimestamp
-                    timestamp={new Date(message.timestamp).toLocaleTimeString(
-                      [],
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
+                  <div className="flex flex-col">
+                    <ChatBubbleMessage
+                      variant={
+                        isCurrentUser(message.sender) ? "sent" : "received"
                       }
-                    )}
-                  />
+                      className={
+                        isCurrentUser(message.sender)
+                          ? "bg-primary text-primary-foreground rounded-[20px] rounded-tr-none"
+                          : "bg-secondary text-secondary-foreground rounded-[20px] rounded-tl-none"
+                      }
+                    >
+                      {getMessageContent(message)}
+                    </ChatBubbleMessage>
+                    {renderReactions(message)}
+                  </div>
+                  <div className={`flex flex-col ${isCurrentUser(message.sender) ? 'items-end' : 'items-start'}`}>
+                    
+                    <button
+                      onClick={() => handleReaction(message.id)}
+                      disabled={reactingToMessage === message.id}
+                      className={`rounded-full hover:text-foreground/80 ${
+                        message.reactions?.some(r => r.sender === currentUser)
+                          ? "text-red-500"
+                          : "text-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                      }`}
+                      title="React with heart"
+                    >
+                      {reactingToMessage === message.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Heart 
+                          className="h-4 w-4" 
+                          fill={message.reactions?.some(r => r.sender === currentUser) ? "currentColor" : "none"} 
+                        />
+                      )}
+                    </button>
+                    <ChatBubbleTimestamp
+                      timestamp={new Date(message.timestamp).toLocaleTimeString(
+                        [],
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        }
+                      )}
+                    />
+                  </div>
                 </ChatBubble>
               ))}
               <div ref={messageEndRef} />

@@ -57,7 +57,7 @@ export async function fetchInstagramChats() {
         }
       }
 
-      const otherParticipant = conversation.participants?.data?.length > 1
+      const otherParticipant = conversation.participants?.data?.length && conversation.participants.data.length > 1
         ? conversation.participants.data[1]
         : { username: 'Unknown', id: '', profile_picture: undefined };
 
@@ -90,7 +90,7 @@ export async function fetchChatMessages(chatId: string) {
 
   try {
     const response = await fetch(
-      `https://graph.instagram.com/v23.0/${chatId}/messages?fields=message,from,created_time,attachments{mime_type,url,name,title,type,image_data,video_data,file_url,audio_url,asset_url}`,
+      `https://graph.instagram.com/v23.0/${chatId}/messages?fields=message,from,created_time,attachments{mime_type,url,name,title,type,image_data,video_data,file_url,audio_url,asset_url},reactions`,
       {
         headers: {
           "Authorization": `Bearer ${accessToken.value}`
@@ -158,6 +158,13 @@ export async function fetchChatMessages(chatId: string) {
             }
           };
         });
+      }
+
+      if (message.reactions?.data && message.reactions.data.length > 0) {
+        formattedMessage.reactions = message.reactions.data.map(reaction => ({
+          type: reaction.reaction || "love",
+          sender: reaction.username || reaction.id
+        }));
       }
 
       return formattedMessage;
@@ -444,13 +451,28 @@ export async function sendStickerMessage(chatId: string, stickerId: string) {
 /**
  * React to a message
  */
-export async function reactToMessage(chatId: string, messageId: string, emoji: string) {
+export async function reactToMessage(chatId: string, messageId: string, reaction: string = "love") {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");
+
+  if (!accessToken) {
+    return { error: "Not authenticated" };
+  }
 
   try {
     const participantId = await getParticipantId(chatId);
     console.log("Sending reaction to participant:", participantId);
+    
+    const requestBody = {
+      recipient: { id: participantId },
+      sender_action: "react",
+      payload: {
+        message_id: messageId,
+        reaction: reaction
+      }
+    };
+    
+    console.log("Reaction request body:", JSON.stringify(requestBody));
     
     const response = await fetch(
       `https://graph.instagram.com/v23.0/me/messages`,
@@ -458,34 +480,35 @@ export async function reactToMessage(chatId: string, messageId: string, emoji: s
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken?.value}`
+          "Authorization": `Bearer ${accessToken.value}`
         },
-        body: JSON.stringify({
-          recipient: { id: participantId },
-          message: {
-            reaction: {
-              mid: messageId,
-              action: "react",
-              emoji: emoji
-            }
-          }
-        }),
+        body: JSON.stringify(requestBody),
       }
     );
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Instagram API error:", errorData);
-      throw new Error(`Failed to react to message: ${JSON.stringify(errorData)}`);
-    }
+    const responseData = await response.json();
+    console.log("Reaction response:", JSON.stringify(responseData));
 
-    const data = await response.json();
+    if (!response.ok) {
+      console.error("Instagram API error:", responseData);
+      
+      if (responseData.error?.code === 10 && responseData.error?.error_subcode === 2534022) {
+        return { 
+          error: "Cannot react to this message - Instagram only allows reactions to recent messages",
+          messageId,
+          errorCode: "MESSAGE_TOO_OLD"
+        };
+      }
+      
+      return { error: responseData.error?.message || "Failed to react to message" };
+    }
 
     revalidatePath(`/`);
 
     return {
-      id: data.message_id,
-      reaction: { messageId, emoji },
+      success: true,
+      messageId,
+      reaction,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
@@ -597,5 +620,72 @@ export async function getCurrentUser() {
   } catch (error) {
     console.error("Instagram auth error:", error);
     return { error: "Authentication failed" };
+  }
+}
+
+/**
+ * Remove a reaction from a message
+ */
+export async function removeReaction(chatId: string, messageId: string) {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("instagram_access_token");
+
+  if (!accessToken) {
+    return { error: "Not authenticated" };
+  }
+
+  try {
+    const participantId = await getParticipantId(chatId);
+    console.log("Removing reaction from message:", messageId);
+    
+    const requestBody = {
+      recipient: { id: participantId },
+      sender_action: "unreact",
+      payload: {
+        message_id: messageId
+      }
+    };
+    
+    console.log("Unreaction request body:", JSON.stringify(requestBody));
+    
+    const response = await fetch(
+      `https://graph.instagram.com/v23.0/me/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken.value}`
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    const responseData = await response.json();
+    console.log("Unreaction response:", JSON.stringify(responseData));
+
+    if (!response.ok) {
+      console.error("Instagram API error:", responseData);
+      
+      if (responseData.error?.code === 10 && responseData.error?.error_subcode === 2534022) {
+        return { 
+          error: "Cannot remove reaction from this message - Instagram only allows reactions on recent messages",
+          messageId,
+          errorCode: "MESSAGE_TOO_OLD"
+        };
+      }
+      
+      return { error: responseData.error?.message || "Failed to remove reaction" };
+    }
+
+    revalidatePath(`/`);
+
+    return {
+      success: true,
+      messageId,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error("Error removing reaction:", error);
+    return { error: "Failed to remove reaction" };
   }
 }
