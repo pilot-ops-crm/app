@@ -35,6 +35,11 @@ import {
 
 import { Chat, Message } from "@/types";
 
+/**
+ * Displays an Instagram-style chat interface with support for messaging, media attachments, and responsive UI.
+ *
+ * Fetches and displays chat conversations, allows users to select a chat, view and send text or media messages (images, videos, stickers, Instagram posts), and provides real-time feedback with optimistic UI updates and error notifications. Supports scrolling to the latest message, media previews, and responsive design for mobile and desktop layouts.
+ */
 export default function ChatPage() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<string | null>(null);

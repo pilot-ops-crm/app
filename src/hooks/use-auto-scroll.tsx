@@ -11,6 +11,14 @@ interface UseAutoScrollOptions {
   content?: React.ReactNode;
 }
 
+/**
+ * React hook that manages automatic scrolling behavior for a scrollable container.
+ *
+ * Keeps the container scrolled to the bottom when new content or size changes occur, unless the user has manually scrolled away. Provides control to enable or disable auto-scroll and to programmatically scroll to the bottom.
+ *
+ * @param options - Optional configuration for offset tolerance from the bottom, smooth scrolling, and content tracking.
+ * @returns An object containing a ref for the scrollable container, booleans indicating if the scroll is at the bottom and if auto-scroll is enabled, and functions to scroll to the bottom or disable auto-scroll.
+ */
 export function useAutoScroll(options: UseAutoScrollOptions = {}) {
   const { offset = 20, smooth = false, content } = options;
   const scrollRef = useRef<HTMLDivElement>(null);

@@ -3,7 +3,12 @@ import { cookies } from 'next/headers';
 import { fetchInstagramChats } from '@/actions/instagram/chats';
 
 /**
- * Helper function to get the participant ID for a given chat ID
+ * Resolves and returns the participant ID associated with a given chat ID.
+ *
+ * If the chat ID is already in participant ID format, it is returned directly. Otherwise, attempts to look up the participant ID from the list of Instagram chats. If no participant ID is found, returns the original chat ID.
+ *
+ * @param chatId - The chat or conversation ID to resolve
+ * @returns The participant ID corresponding to the chat, or the original chat ID if not found
  */
 async function getParticipantId(chatId: string): Promise<string> {
   if (chatId.startsWith('ig_')) {
@@ -23,7 +28,13 @@ async function getParticipantId(chatId: string): Promise<string> {
 }
 
 /**
- * Upload an attachment and get the attachment ID
+ * Uploads a media attachment to Instagram and returns the resulting attachment ID.
+ *
+ * @param accessToken - The access token used for authentication with the Instagram Graph API.
+ * @param mediaType - The type of media to upload (e.g., "image", "video", "audio", "file").
+ * @param mediaUrl - The URL of the media file to upload.
+ * @returns The attachment ID assigned by Instagram for the uploaded media.
+ * @throws If the Instagram page ID is missing or the API request fails.
  */
 async function uploadAttachment(accessToken: string, mediaType: string, mediaUrl: string): Promise<string> {
   try {
@@ -70,6 +81,11 @@ async function uploadAttachment(accessToken: string, mediaType: string, mediaUrl
   }
 }
 
+/**
+ * Handles POST requests to send messages to Instagram users via the Facebook Graph API.
+ *
+ * Expects a JSON body with `recipientId`, `messageType`, and `content`. Supports sending text, image, video, audio, file, sticker, and post messages. Validates authentication and required fields, constructs the appropriate message payload, and sends it to the Instagram messaging endpoint. Returns a JSON response with the message ID, timestamp, and message content or attachment details on success, or an error message with the appropriate status code on failure.
+ */
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -244,6 +260,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Handles unsupported GET requests by returning a 405 Method Not Allowed error in JSON format.
+ */
 export async function GET() {
   return NextResponse.json(
     { error: 'Method not allowed' },

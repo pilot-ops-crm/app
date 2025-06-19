@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { InstagramMessage, Message } from "@/types";
 
+/**
+ * Handles GET requests to retrieve messages for a specific Instagram chat.
+ *
+ * Extracts the Instagram access token from cookies and fetches messages for the given chat ID from the Instagram Graph API. Returns a JSON array of messages with their IDs, text, sender usernames, and timestamps. Responds with appropriate error messages and status codes if authentication fails or if message retrieval encounters an error.
+ */
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ chatId: string }> }
@@ -43,6 +48,11 @@ export async function GET(
   }
 }
 
+/**
+ * Sends a message to a specified Instagram chat using the Instagram Graph API.
+ *
+ * Expects a JSON request body containing a `recipient` object with an `id` and a `message` object. Returns a JSON response with the sent message's ID, text, and timestamp. Responds with appropriate error messages and status codes for authentication, validation, or API failures.
+ */
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ chatId: string }> }

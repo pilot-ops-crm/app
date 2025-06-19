@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
+/**
+ * Handles GET requests to retrieve Instagram user information using an access token from cookies.
+ *
+ * If a valid "instagram_access_token" cookie is present, fetches the user's ID and username from the Instagram Graph API and returns them in a JSON response. Returns a 401 response if authentication fails or the token is missing, and a 500 response for unexpected errors.
+ */
 export async function GET() {
   try {
     const cookieStore = await cookies();

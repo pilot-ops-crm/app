@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { InstagramConversation, InstagramMessage, Message } from "@/types";
 
 /**
- * Fetch Instagram chats
+ * Retrieves a list of Instagram chat conversations for the authenticated user.
+ *
+ * Each chat summary includes the conversation ID, the other participant's username and ID, a preview of the last message (text or attachment type), and the unread message count.
+ *
+ * @returns An array of chat summaries, or an error object if the fetch fails.
  */
 export async function fetchInstagramChats() {
   const cookieStore = await cookies();
@@ -78,7 +82,12 @@ export async function fetchInstagramChats() {
 }
 
 /**
- * Fetch messages for a specific chat
+ * Retrieves and formats messages for a specific Instagram chat.
+ *
+ * Fetches messages from the Instagram Graph API for the given chat ID, including text, sender, timestamp, and any attachments. Attachments are mapped to standardized types such as image, video, audio, post, story, sticker, or file, with relevant URLs and titles extracted.
+ *
+ * @param chatId - The unique identifier of the Instagram chat to fetch messages from.
+ * @returns An array of formatted message objects, or an error object if authentication fails or the API request is unsuccessful.
  */
 export async function fetchChatMessages(chatId: string) {
   const cookieStore = await cookies();
@@ -171,7 +180,12 @@ export async function fetchChatMessages(chatId: string) {
 }
 
 /**
- * Get the participant ID for a given chat ID
+ * Resolves the participant ID associated with a given chat ID.
+ *
+ * If the chat ID is already a participant ID (prefixed with "ig_"), it is returned directly. Otherwise, attempts to find the participant ID from the list of Instagram chats. Falls back to returning the original chat ID if no participant ID is found.
+ *
+ * @param chatId - The chat or conversation ID to resolve
+ * @returns The participant ID corresponding to the chat, or the original chat ID if not found
  */
 async function getParticipantId(chatId: string): Promise<string> {
   if (chatId.startsWith('ig_')) {
@@ -191,7 +205,11 @@ async function getParticipantId(chatId: string): Promise<string> {
 }
 
 /**
- * Send a message to a chat
+ * Sends a text message to a specified Instagram chat participant.
+ *
+ * @param chatId - The identifier of the chat to send the message to
+ * @param messageText - The text content of the message to send
+ * @returns An object containing the sent message's ID, text, and timestamp, or an error object if sending fails
  */
 export async function sendChatMessage(chatId: string, messageText: string) {
   const cookieStore = await cookies();
@@ -238,7 +256,11 @@ export async function sendChatMessage(chatId: string, messageText: string) {
 }
 
 /**
- * Send an image message
+ * Sends an image message to a specified Instagram chat participant.
+ *
+ * @param chatId - The ID of the chat to send the image to
+ * @param imageUrl - The URL of the image to be sent
+ * @returns An object containing the sent message's ID, timestamp, and attachment details, or an error object if the operation fails
  */
 export async function sendImageMessage(chatId: string, imageUrl: string) {
   const cookieStore = await cookies();
@@ -304,7 +326,11 @@ export async function sendImageMessage(chatId: string, imageUrl: string) {
 }
 
 /**
- * Send a video message
+ * Sends a video message to a specified Instagram chat participant.
+ *
+ * @param chatId - The ID of the chat to send the video to
+ * @param videoUrl - The URL of the video to be sent
+ * @returns An object containing the sent message's ID, timestamp, and video attachment details, or an error object if the operation fails
  */
 export async function sendVideoMessage(chatId: string, videoUrl: string) {
   const cookieStore = await cookies();
@@ -370,7 +396,11 @@ export async function sendVideoMessage(chatId: string, videoUrl: string) {
 }
 
 /**
- * Send a sticker message
+ * Sends a sticker message to a specified Instagram chat participant.
+ *
+ * @param chatId - The ID of the chat to send the sticker to
+ * @param stickerId - The URL of the sticker image to send
+ * @returns An object containing the sent message's ID, timestamp, and sticker attachment info, or an error object if sending fails
  */
 export async function sendStickerMessage(chatId: string, stickerId: string) {
   const cookieStore = await cookies();
@@ -442,7 +472,12 @@ export async function sendStickerMessage(chatId: string, stickerId: string) {
 }
 
 /**
- * React to a message
+ * Sends a reaction emoji to a specific message in an Instagram chat.
+ *
+ * @param chatId - The ID of the chat containing the message
+ * @param messageId - The ID of the message to react to
+ * @param emoji - The emoji to use as the reaction
+ * @returns An object containing the message ID, reaction details, and timestamp, or an error object if the operation fails
  */
 export async function reactToMessage(chatId: string, messageId: string, emoji: string) {
   const cookieStore = await cookies();
@@ -495,7 +530,13 @@ export async function reactToMessage(chatId: string, messageId: string, emoji: s
 }
 
 /**
- * Send an Instagram post
+ * Shares an Instagram post in a chat conversation.
+ *
+ * Sends a specified Instagram post as a media attachment to the participant in the given chat.
+ *
+ * @param chatId - The identifier of the chat where the post will be shared
+ * @param postId - The identifier or URL of the Instagram post to share
+ * @returns An object containing the sent message's ID, timestamp, and attachment details, or an error object if the operation fails
  */
 export async function sendInstagramPost(chatId: string, postId: string) {
   const cookieStore = await cookies();
@@ -567,7 +608,9 @@ export async function sendInstagramPost(chatId: string, postId: string) {
 }
 
 /**
- * Get current user info
+ * Retrieves the current authenticated Instagram user's ID and username.
+ *
+ * @returns An object containing the user's ID, username, and provider, or an error object if authentication fails.
  */
 export async function getCurrentUser() {
   const cookieStore = await cookies();

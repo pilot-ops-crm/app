@@ -19,6 +19,11 @@ type InstagramConnection = {
   error?: string;
 };
 
+/**
+ * Renders the settings page for managing Instagram integration, allowing users to connect or disconnect their Instagram account.
+ *
+ * Displays the current Instagram connection status, provides feedback on connection or disconnection actions, and enables users to initiate or revoke Instagram integration for managing direct messages through Pilot.
+ */
 export default function SettingsPage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [instagramConnection, setInstagramConnection] =

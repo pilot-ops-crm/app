@@ -10,6 +10,13 @@ export const metadata: Metadata = {
   description: "Simulate your DMs with AI",
 };
 
+/**
+ * Defines the root layout for the application, providing sidebar navigation, authentication gating, and structured page content.
+ *
+ * Wraps the app in a sidebar context and applies global layout styles, including sidebar and header sizing. Renders the sidebar, page header, and main content area, displaying children only when the user is authenticated.
+ *
+ * @param children - The page content to render within the main layout
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

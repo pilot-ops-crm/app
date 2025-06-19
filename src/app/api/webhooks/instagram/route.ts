@@ -16,6 +16,11 @@ export async function GET(request: NextRequest) {
   return new NextResponse("Forbidden", { status: 403 });
 }
 
+/**
+ * Handles incoming Instagram webhook POST requests, validating the signature and processing event payloads.
+ *
+ * Parses and logs the webhook payload, then processes each entry for supported event types such as messaging events, reactions, read receipts, postbacks, and message-related changes. Responds with appropriate HTTP status codes based on validation and processing outcomes.
+ */
 export async function POST(request: NextRequest) {
   const headersList = await headers();
   const signature = headersList.get("x-hub-signature");

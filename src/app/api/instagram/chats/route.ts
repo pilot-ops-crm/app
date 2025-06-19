@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { Chat, InstagramConversation } from "@/types";
 
+/**
+ * Handles GET requests to fetch Instagram conversations for the authenticated user.
+ *
+ * Retrieves the user's Instagram access token from cookies and queries the Instagram Graph API for conversation data, including participants, messages, and unread counts. Transforms the API response into an array of Chat objects with summarized last message content and participant details. Returns a JSON response with the chat list or an error message if authentication fails or the API request encounters an error.
+ */
 export async function GET() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");

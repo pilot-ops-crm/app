@@ -1,5 +1,10 @@
 import { useId } from "react";
 
+/**
+ * Renders an animated SVG loading indicator with three bouncing circles.
+ *
+ * The animation staggers the vertical movement of each circle to create a sequential bouncing effect, visually indicating a loading state.
+ */
 export default function MessageLoading() {
   return (
     <svg aria-hidden="true" role="img"
