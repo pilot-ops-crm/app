@@ -9,6 +9,7 @@ import {
   FileAttachment
 } from "../attachments";
 import Link from "next/link";
+import { isValidURL } from "@/lib/utils";
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
 
@@ -76,11 +77,16 @@ export const getMessageContent = (message: Message) => {
     
     try {
       if (attachment.image_data) {
+        const url = attachment.image_data.url || attachment.image_data.preview_url || '';
+        if (!isValidURL(url)) {
+          return "[Invalid image URL]";
+        }
+        
         const isAnimatedGif = Boolean(attachment.image_data.animated_gif_url);
         
         return (
           <ImageAttachment 
-            url={attachment.image_data.url || attachment.image_data.preview_url || ''} 
+            url={url} 
             width={attachment.image_data.width}
             height={attachment.image_data.height}
             isAnimatedGif={isAnimatedGif}
@@ -91,9 +97,14 @@ export const getMessageContent = (message: Message) => {
       }
       
       if (attachment.video_data) {
+        const url = attachment.video_data.url || attachment.video_data.preview_url || '';
+        if (!isValidURL(url)) {
+          return "[Invalid video URL]";
+        }
+        
         return (
           <VideoAttachment 
-            url={attachment.video_data.url || attachment.video_data.preview_url || ''} 
+            url={url} 
             width={attachment.video_data.width}
             height={attachment.video_data.height}
             title="Video" 
@@ -102,15 +113,24 @@ export const getMessageContent = (message: Message) => {
       }
       
       if (attachment.audio_data) {
+        const url = attachment.audio_data.url || attachment.audio_data.preview_url || '';
+        if (!isValidURL(url)) {
+          return "[Invalid audio URL]";
+        }
+        
         return (
           <AudioAttachment 
-            url={attachment.audio_data.url || attachment.audio_data.preview_url || ''} 
+            url={url} 
             title="Audio" 
           />
         );
       }
       
-      if (attachment.type && attachment.payload && attachment.payload.url) {
+      if (attachment.type && attachment.payload) {
+        if (!attachment.payload.url || !isValidURL(attachment.payload.url)) {
+          return `[Invalid ${attachment.type} URL]`;
+        }
+        
         switch (attachment.type) {
           case "image":
             return <ImageAttachment url={attachment.payload.url} title={attachment.payload.title || "Image"} />;

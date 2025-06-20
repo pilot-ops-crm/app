@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { isValidURL } from "@/lib/utils";
 import { History } from "lucide-react";
@@ -10,6 +10,7 @@ interface StoryAttachmentProps {
   username?: string;
   width?: number;
   height?: number;
+  isExpired?: boolean;
 }
 
 export const StoryAttachment = ({
@@ -17,10 +18,25 @@ export const StoryAttachment = ({
   title,
   username,
   width = 200,
-  height = 350
+  height = 350,
+  isExpired: initialExpired = false
 }: StoryAttachmentProps) => {
   const [error, setError] = useState(false);
-  const [expired, setExpired] = useState(false);
+  const [expired, setExpired] = useState(initialExpired);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!expired && isValidURL(url)) {
+      const img = new window.Image();
+      img.onload = () => {
+        setImageLoaded(true);
+      };
+      img.onerror = () => {
+        setExpired(true);
+      };
+      img.src = url;
+    }
+  }, [url, expired]);
 
   if (!isValidURL(url)) {
     return <div className="text-red-500 text-xs">[Invalid story URL]</div>;
@@ -55,16 +71,13 @@ export const StoryAttachment = ({
           width={width}
           height={height}
           className="object-cover max-h-[350px]"
-          onError={(e) => {
+          onLoad={() => setImageLoaded(true)}
+          onError={() => {
             console.error("Story image failed to load:", url);
-            if ((e.target as HTMLImageElement).src.includes("expired")) {
-              setExpired(true);
-            } else {
-              setError(true);
-            }
+            setError(true);
           }}
         />
-        {username && (
+        {username && imageLoaded && (
           <Link
             href={`https://www.instagram.com/${username}`}
             target="_blank"

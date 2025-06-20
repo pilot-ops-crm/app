@@ -46,6 +46,8 @@ export const ImageAttachment = ({
         <Image
           src={animatedGifUrl}
           alt={title || "GIF"}
+          width={width}
+          height={height}
           className="rounded-lg object-contain max-w-[300px]"
           onError={() => {
             console.error("GIF failed to load:", animatedGifUrl);
