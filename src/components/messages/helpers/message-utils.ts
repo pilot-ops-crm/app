@@ -1,15 +1,9 @@
-import { Chat, Message } from "@/types";
+import { Chat, Message, MessageAttachment } from "@/types";
 
 interface MessageSuccessResult {
   id: string;
   timestamp: string;
-  attachments?: Array<{
-    type: string;
-    payload: {
-      url: string;
-      title: string;
-    }
-  }>;
+  attachments?: MessageAttachment[];
 }
 
 interface MessageErrorResult {
@@ -20,20 +14,60 @@ interface MessageErrorResult {
 type MessageResult = MessageSuccessResult | MessageErrorResult;
 
 export const createOptimisticMessage = (url: string, type: string, currentUser: string): Message => {
-  return {
+  const optimisticMessage: Message = {
     id: `temp-${Date.now()}`,
     sender: currentUser,
     timestamp: new Date().toISOString(),
-    attachments: [
-      {
-        type,
-        payload: { 
-          url,
-          title: type.charAt(0).toUpperCase() + type.slice(1)
-        }
-      }
-    ]
   };
+  
+  switch (type) {
+    case "image":
+      optimisticMessage.attachments = [{
+        image_data: {
+          url: url,
+          preview_url: url,
+          width: 300,
+          height: 300
+        }
+      }];
+      break;
+    case "video":
+      optimisticMessage.attachments = [{
+        video_data: {
+          url: url,
+          preview_url: url,
+          width: 300,
+          height: 300
+        }
+      }];
+      break;
+    case "audio":
+      optimisticMessage.attachments = [{
+        audio_data: {
+          url: url,
+          preview_url: url
+        }
+      }];
+      break;
+    case "sticker":
+      optimisticMessage.attachments = [{
+        image_data: {
+          url: url,
+          preview_url: url,
+          width: 150,
+          height: 150,
+          render_as_sticker: true
+        }
+      }];
+      break;
+    case "post":
+      optimisticMessage.text = url;
+      break;
+    default:
+      optimisticMessage.text = url;
+  }
+  
+  return optimisticMessage;
 };
 
 export const updateMessagesAfterSend = (
@@ -51,15 +85,7 @@ export const updateMessagesAfterSend = (
       id: result.id,
       sender: currentUser,
       timestamp: result.timestamp || new Date().toISOString(),
-      attachments: result.attachments || [
-        {
-          type: mediaType,
-          payload: { 
-            url: mediaUrl,
-            title: mediaType.charAt(0).toUpperCase() + mediaType.slice(1)
-          }
-        }
-      ]
+      attachments: result.attachments || tempMessage.attachments
     };
 
     setMessages((prev) =>

@@ -1,9 +1,10 @@
 import { isValidURL } from "@/lib/utils";
 import { useState } from "react";
+import { Disc3 } from "lucide-react";
 
 interface AudioAttachmentProps {
   url: string;
-  title: string;
+  title?: string;
 }
 
 export const AudioAttachment = ({ url, title }: AudioAttachmentProps) => {
@@ -15,26 +16,29 @@ export const AudioAttachment = ({ url, title }: AudioAttachmentProps) => {
   
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-blue-500">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 18V5l12-2v13"></path>
-          <circle cx="6" cy="18" r="3"></circle>
-          <circle cx="18" cy="16" r="3"></circle>
-        </svg>
-        <span>{title || "Audio"}</span>
+      <div className="flex items-center gap-2 text-blue-500 p-2 bg-background/10 rounded-lg">
+        <Disc3 className="h-5 w-5" />
+        <span>{title || "Audio Message"}</span>
       </div>
     );
   }
   
   return (
-    <audio
-      src={url}
-      controls
-      className="rounded-lg max-w-[250px]"
-      onError={() => {
-        console.error("Audio failed to load:", url);
-        setError(true);
-      }}
-    />
+    <div className="max-w-full w-[250px] bg-background/10 rounded-lg p-2">
+      <div className="flex items-center gap-2 mb-1">
+        <Disc3 className="h-4 w-4" />
+        <span className="text-sm font-medium">{title || "Audio Message"}</span>
+      </div>
+      <audio
+        src={url}
+        controls
+        className="w-full"
+        controlsList="nodownload"
+        onError={() => {
+          console.error("Audio failed to load:", url);
+          setError(true);
+        }}
+      />
+    </div>
   );
 }; 

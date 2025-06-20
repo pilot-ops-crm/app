@@ -3,5 +3,4 @@ export { VideoAttachment } from './video-attachment';
 export { AudioAttachment } from './audio-attachment';
 export { StickerAttachment } from './sticker-attachment';
 export { StoryAttachment } from './story-attachment';
-export { LinkAttachment } from './link-attachment';
 export { FileAttachment } from './file-attachment'; 

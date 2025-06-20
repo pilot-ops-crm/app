@@ -88,9 +88,40 @@ export interface InstagramMessage {
 }
 
 export interface MessageAttachment {
-  type: string;
-  payload: {
-    url: string;
+  image_data?: {
+    width?: number;
+    height?: number;
+    max_width?: number;
+    max_height?: number;
+    url?: string;
+    preview_url?: string;
+    animated_gif_url?: string;
+    animated_gif_preview_url?: string;
+    render_as_sticker?: boolean;
+  };
+  
+  video_data?: {
+    width?: number;
+    height?: number;
+    url?: string;
+    preview_url?: string;
+  };
+  
+  audio_data?: {
+    url?: string;
+    preview_url?: string;
+    duration?: number;
+  };
+  
+  file_data?: {
+    name?: string;
+    size?: number;
+    url?: string;
+  };
+  
+  type?: string;
+  payload?: {
+    url?: string;
     title?: string;
   };
 }
