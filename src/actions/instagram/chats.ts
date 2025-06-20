@@ -596,12 +596,16 @@ export async function getCurrentUser() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("instagram_access_token");
   
+  if (!accessToken) {
+    return { error: "Not authenticated" };
+  }
+  
   try {
     const response = await fetch(
       `https://graph.instagram.com/v23.0/me?fields=username,id`,
       {
         headers: {
-          Authorization: `Bearer ${accessToken?.value}`,
+          Authorization: `Bearer ${accessToken.value}`,
         },
       }
     );

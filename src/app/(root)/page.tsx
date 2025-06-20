@@ -9,8 +9,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Image from "next/image";
-import { Send, Menu, Image as ImageIcon, Video, Sticker, Instagram, Heart, Loader2, ExternalLink } from "lucide-react";
+import {
+  Send,
+  Menu,
+  Image as ImageIcon,
+  Video,
+  Sticker,
+  Instagram,
+  Heart,
+  Loader2,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -37,6 +46,11 @@ import {
 
 import { Chat, Message } from "@/types";
 import Link from "next/link";
+import {
+  getMessageContent,
+  createOptimisticMessage,
+  updateMessagesAfterSend,
+} from "@/components/messages/helpers";
 
 export default function ChatPage() {
   const [chats, setChats] = useState<Chat[]>([]);
@@ -48,8 +62,12 @@ export default function ChatPage() {
   const messageEndRef = useRef<HTMLDivElement>(null);
   const [mediaUrl, setMediaUrl] = useState("");
   const [showMediaInput, setShowMediaInput] = useState(false);
-  const [mediaType, setMediaType] = useState<"image" | "video" | "sticker" | "post">("image");
-  const [reactingToMessage, setReactingToMessage] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<
+    "image" | "video" | "sticker" | "post"
+  >("image");
+  const [reactingToMessage, setReactingToMessage] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -166,72 +184,46 @@ export default function ChatPage() {
   const handleSendMedia = async () => {
     if (!mediaUrl.trim() || !selectedChat) return;
 
-    const tempMessage: Message = {
-      id: `temp-${Date.now()}`,
-      sender: currentUser,
-      timestamp: new Date().toISOString(),
-      attachments: [
-        {
-          type: mediaType,
-          payload: { 
-            url: mediaUrl,
-            title: mediaType.charAt(0).toUpperCase() + mediaType.slice(1)
-          }
-        }
-      ]
-    };
+    const tempMessage = createOptimisticMessage(
+      mediaUrl,
+      mediaType,
+      currentUser
+    );
 
     setMessages((prev) => [...prev, tempMessage]);
+
     setMediaUrl("");
     setShowMediaInput(false);
 
+    const sendFunctions = {
+      image: sendImageMessage,
+      video: sendVideoMessage,
+      sticker: sendStickerMessage,
+      post: sendInstagramPost,
+    };
+
     try {
-      let result;
-      switch (mediaType) {
-        case "image":
-          result = await sendImageMessage(selectedChat, mediaUrl);
-          break;
-        case "video":
-          result = await sendVideoMessage(selectedChat, mediaUrl);
-          break;
-        case "sticker":
-          result = await sendStickerMessage(selectedChat, mediaUrl);
-          break;
-        case "post":
-          result = await sendInstagramPost(selectedChat, mediaUrl);
-          break;
+      const sendFunction =
+        sendFunctions[mediaType as keyof typeof sendFunctions];
+      if (!sendFunction) {
+        throw new Error(`Unsupported media type: ${mediaType}`);
       }
 
-      if (result && "id" in result) {
-        const serverMessage: Message = {
-          id: result.id,
-          sender: currentUser,
-          timestamp: result.timestamp || new Date().toISOString(),
-          attachments: result.attachments || [
-            {
-              type: mediaType,
-              payload: { 
-                url: mediaUrl,
-                title: mediaType.charAt(0).toUpperCase() + mediaType.slice(1)
-              }
-            }
-          ]
-        };
+      const result = await sendFunction(selectedChat, mediaUrl);
 
-        setMessages((prev) =>
-          prev.map((msg) => (msg.id === tempMessage.id ? serverMessage : msg))
-        );
+      const updateResult = updateMessagesAfterSend(
+        result,
+        tempMessage,
+        mediaType,
+        mediaUrl,
+        currentUser,
+        setMessages,
+        setChats,
+        selectedChat
+      );
 
-        setChats((prev) =>
-          prev.map((chat) =>
-            chat.id === selectedChat
-              ? { ...chat, lastMessage: `[${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)}]` }
-              : chat
-          )
-        );
-      } else if (result && "error" in result) {
-        toast.error(result.error);
-        setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
+      if (updateResult && "error" in updateResult) {
+        toast.error(updateResult.error);
       }
     } catch (error) {
       console.error(`Error sending ${mediaType}:`, error);
@@ -244,157 +236,9 @@ export default function ChatPage() {
     return senderId === currentUser;
   };
 
-  const getMessageContent = (message: Message) => {
-    if (message.text) {
-      return message.text;
-    }
-
-    if (message.attachments && message.attachments.length > 0) {
-      const attachment = message.attachments[0];
-      
-      if (!attachment.payload.url) {
-        console.warn("Missing URL for attachment:", attachment);
-        return `[${attachment.type.charAt(0).toUpperCase() + attachment.type.slice(1)}]`;
-      }
-      
-      switch (attachment.type) {
-        case "image":
-          return (
-            <div className="relative">
-              <Image
-                src={attachment.payload.url}
-                alt={attachment.payload.title || "Image"}
-                width={300}
-                height={300}
-                className="rounded-lg object-contain max-w-[300px]"
-                onError={(e) => {
-                  console.error("Image failed to load:", attachment.payload.url);
-                  (e.target as HTMLImageElement).src = "/file.svg";
-                  (e.target as HTMLImageElement).className = "w-8 h-8";
-                }}
-              />
-            </div>
-          );
-        case "video":
-          return (
-            <div className="relative">
-              <video
-                src={attachment.payload.url}
-                controls
-                className="rounded-lg max-w-[250px]"
-                onError={(e) => {
-                  console.error("Video failed to load:", attachment.payload.url);
-                  e.currentTarget.style.display = "none";
-                  const parent = e.currentTarget.parentElement;
-                  if (parent) {
-                    parent.innerHTML = `<div class="flex items-center gap-2 text-blue-500"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg> Video</div>`;
-                  }
-                }}
-              />
-            </div>
-          );
-        case "audio":
-          return (
-            <audio
-              src={attachment.payload.url}
-              controls
-              className="rounded-lg max-w-[250px]"
-              onError={(e) => {
-                console.error("Audio failed to load:", attachment.payload.url);
-                e.currentTarget.style.display = "none";
-                const parent = e.currentTarget.parentElement;
-                if (parent) {
-                  parent.innerHTML = `<div class="flex items-center gap-2 text-blue-500"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg> Audio</div>`;
-                }
-              }}
-            />
-          );
-        case "sticker":
-          return (
-            <div className="relative">
-              <Image
-                src={attachment.payload.url}
-                alt={attachment.payload.title || "Sticker"}
-                width={150}
-                height={150}
-                className="object-contain"
-                onError={(e) => {
-                  console.error("Sticker failed to load:", attachment.payload.url);
-                  (e.target as HTMLImageElement).src = "/file.svg";
-                  (e.target as HTMLImageElement).className = "w-8 h-8";
-                }}
-              />
-            </div>
-          );
-        case "story":
-          return (
-            <div className="flex flex-col items-center">
-              <div className="mb-1 text-sm text-neutral-500">Instagram Story</div>
-              <Image
-                src={attachment.payload.url}
-                alt={attachment.payload.title || "Story"}
-                width={200}
-                height={200}
-                className="rounded-lg object-cover max-w-[250px]"
-                onError={(e) => {
-                  console.error("Story image failed to load:", attachment.payload.url);
-                  (e.target as HTMLImageElement).src = "/file.svg";
-                  (e.target as HTMLImageElement).className = "w-8 h-8";
-                }}
-              />
-            </div>
-          );
-        case "post":
-          return (
-            <a
-              href={attachment.payload.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 underline flex items-center gap-2"
-            >
-              <Instagram className="h-4 w-4" />
-              {attachment.payload.title || "Instagram Post"}
-            </a>
-          );
-        case "template":
-          return (
-            <a
-              href={attachment.payload.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 underline flex items-center gap-2"
-            >
-              <Instagram className="h-4 w-4" />
-              {attachment.payload.title || "Instagram Content"}
-            </a>
-          );
-        default:
-          return (
-            <a
-              href={attachment.payload.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 underline flex items-center gap-2"
-            >
-              <Image
-                src="/file.svg"
-                alt="File"
-                width={16}
-                height={16}
-                className="mr-1"
-              />
-              {attachment.payload.title || attachment.type || "Attachment"}
-            </a>
-          );
-      }
-    }
-
-    return "[Message content unavailable]";
-  };
-
   const renderReactions = (message: Message) => {
     if (!message.reactions || message.reactions.length === 0) return null;
-    
+
     return (
       <div className="flex items-center text-xs mt-1">
         <div className="bg-foreground/5 rounded-full px-2 py-1 flex items-center">
@@ -407,24 +251,28 @@ export default function ChatPage() {
 
   const handleReaction = async (messageId: string) => {
     if (!selectedChat) return;
-    
+
     setReactingToMessage(messageId);
 
     try {
-      const message = messages.find(msg => msg.id === messageId);
-      const hasReacted = message?.reactions?.some(r => r.sender === currentUser);
+      const message = messages.find((msg) => msg.id === messageId);
+      const hasReacted = message?.reactions?.some(
+        (r) => r.sender === currentUser
+      );
 
       if (hasReacted) {
         const result = await removeReaction(selectedChat, messageId);
         console.log("Remove reaction result:", result);
-        
+
         if (result.success) {
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === messageId 
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === messageId
                 ? {
-                    ...msg, 
-                    reactions: (msg.reactions || []).filter(r => r.sender !== currentUser)
+                    ...msg,
+                    reactions: (msg.reactions || []).filter(
+                      (r) => r.sender !== currentUser
+                    ),
                   }
                 : msg
             )
@@ -433,7 +281,7 @@ export default function ChatPage() {
         } else if ("error" in result) {
           if (result.errorCode === "MESSAGE_TOO_OLD") {
             toast.error("Instagram only allows reactions to recent messages", {
-              description: "This limitation is imposed by Instagram's API"
+              description: "This limitation is imposed by Instagram's API",
             });
           } else {
             toast.error(result.error);
@@ -442,17 +290,17 @@ export default function ChatPage() {
       } else {
         const result = await reactToMessage(selectedChat, messageId, "love");
         console.log("Add reaction result:", result);
-        
+
         if (result.success) {
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === messageId 
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === messageId
                 ? {
-                    ...msg, 
+                    ...msg,
                     reactions: [
                       ...(msg.reactions || []),
-                      { type: "love", sender: currentUser }
-                    ]
+                      { type: "love", sender: currentUser },
+                    ],
                   }
                 : msg
             )
@@ -461,7 +309,7 @@ export default function ChatPage() {
         } else if ("error" in result) {
           if (result.errorCode === "MESSAGE_TOO_OLD") {
             toast.error("Instagram only allows reactions to recent messages", {
-              description: "This limitation is imposed by Instagram's API"
+              description: "This limitation is imposed by Instagram's API",
             });
           } else {
             toast.error(result.error);
@@ -483,6 +331,8 @@ export default function ChatPage() {
       </div>
     );
   }
+
+  console.log(chats)
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -556,10 +406,17 @@ export default function ChatPage() {
                 {chats.find((chat) => chat.id === selectedChat)?.username}
               </h1>
               <Button size="sm" variant="outline" asChild>
-                <Link href={`https://www.instagram.com/${chats.find((chat) => chat.id === selectedChat)?.username}`} target="_blank">
-                  View Profile<ExternalLink className="h-4 w-4 ml-1" />
+                <Link
+                  href={`https://www.instagram.com/${
+                    chats.find((chat) => chat.id === selectedChat)?.username
+                  }`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View Profile
+                  <ExternalLink className="h-4 w-4 ml-1" />
                 </Link>
-              </Button>
+              </Button>{" "}
             </div>
           </header>
 
@@ -569,7 +426,9 @@ export default function ChatPage() {
                 <ChatBubble
                   key={`${message.id}-${i}`}
                   variant={isCurrentUser(message.sender) ? "sent" : "received"}
-                  className={`group ${isCurrentUser(message.sender) ? "max-w-[85%]" : ""}`}
+                  className={`group ${
+                    isCurrentUser(message.sender) ? "max-w-[85%]" : ""
+                  }`}
                 >
                   <ChatBubbleAvatar
                     fallback={
@@ -594,13 +453,18 @@ export default function ChatPage() {
                     </ChatBubbleMessage>
                     {renderReactions(message)}
                   </div>
-                  <div className={`flex flex-col ${isCurrentUser(message.sender) ? 'items-end' : 'items-start'}`}>
-                    
+                  <div
+                    className={`flex flex-col ${
+                      isCurrentUser(message.sender)
+                        ? "items-end"
+                        : "items-start"
+                    }`}
+                  >
                     <button
                       onClick={() => handleReaction(message.id)}
                       disabled={reactingToMessage === message.id}
                       className={`rounded-full hover:text-foreground/80 ${
-                        message.reactions?.some(r => r.sender === currentUser)
+                        message.reactions?.some((r) => r.sender === currentUser)
                           ? "text-red-500"
                           : "text-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity"
                       }`}
@@ -609,9 +473,15 @@ export default function ChatPage() {
                       {reactingToMessage === message.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <Heart 
-                          className="h-4 w-4" 
-                          fill={message.reactions?.some(r => r.sender === currentUser) ? "currentColor" : "none"} 
+                        <Heart
+                          className="h-4 w-4"
+                          fill={
+                            message.reactions?.some(
+                              (r) => r.sender === currentUser
+                            )
+                              ? "currentColor"
+                              : "none"
+                          }
                         />
                       )}
                     </button>
@@ -643,10 +513,12 @@ export default function ChatPage() {
                     className="w-full p-2 bg-card border-0 rounded-lg"
                   />
                 </div>
-                <Button onClick={handleSendMedia} size="sm">Send</Button>
-                <Button 
-                  onClick={() => setShowMediaInput(false)} 
-                  variant="outline" 
+                <Button onClick={handleSendMedia} size="sm">
+                  Send
+                </Button>
+                <Button
+                  onClick={() => setShowMediaInput(false)}
+                  variant="outline"
                   size="sm"
                 >
                   Cancel
