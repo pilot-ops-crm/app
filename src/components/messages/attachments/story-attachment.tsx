@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { isValidURL } from "@/lib/utils";
 import { History } from "lucide-react";
@@ -21,20 +21,41 @@ export const StoryAttachment = ({
   height = 350,
   isExpired: initialExpired = false
 }: StoryAttachmentProps) => {
-  const [error, setError] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [expired, setExpired] = useState(initialExpired);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!expired && isValidURL(url)) {
       const img = new window.Image();
+      
       img.onload = () => {
-        setImageLoaded(true);
+        if (isMounted.current) {
+          setImageLoaded(true);
+        }
       };
+      
       img.onerror = () => {
-        setExpired(true);
+        if (isMounted.current) {
+          setExpired(true);
+          setLoadFailed(true);
+        }
       };
+      
       img.src = url;
+      
+      return () => {
+        img.onload = null;
+        img.onerror = null;
+        img.src = '';
+      };
     }
   }, [url, expired]);
 
@@ -42,7 +63,7 @@ export const StoryAttachment = ({
     return <div className="text-red-500 text-xs">[Invalid story URL]</div>;
   }
 
-  if (error || expired) {
+  if (loadFailed || expired) {
     return (
       <div className="flex flex-col items-center">
         <div className="mb-1 text-sm text-neutral-500">Instagram Story</div>
@@ -74,7 +95,7 @@ export const StoryAttachment = ({
           onLoad={() => setImageLoaded(true)}
           onError={() => {
             console.error("Story image failed to load:", url);
-            setError(true);
+            setLoadFailed(true);
           }}
         />
         {username && imageLoaded && (

@@ -41,12 +41,13 @@ const processTextWithLinks = (text: string) => {
   
   if (matches.length === 0) return text;
   
+  let matchIndex = 0;
   return (
     <>
       {parts.map((part, i) => {
         if (i % 2 === 0) return part;
         
-        const url = matches[Math.floor(i / 2)];
+        const url = matches[matchIndex++];
         return (
           <Link 
             key={i} 
@@ -83,14 +84,17 @@ export const getMessageContent = (message: Message) => {
         }
         
         const isAnimatedGif = Boolean(attachment.image_data.animated_gif_url);
+        const animatedGifUrl = attachment.image_data.animated_gif_url && isValidURL(attachment.image_data.animated_gif_url) 
+          ? attachment.image_data.animated_gif_url 
+          : undefined;
         
         return (
           <ImageAttachment 
             url={url} 
             width={attachment.image_data.width}
             height={attachment.image_data.height}
-            isAnimatedGif={isAnimatedGif}
-            animatedGifUrl={attachment.image_data.animated_gif_url}
+            isAnimatedGif={isAnimatedGif && Boolean(animatedGifUrl)}
+            animatedGifUrl={animatedGifUrl}
             title="Image" 
           />
         );
