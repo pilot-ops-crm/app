@@ -12,8 +12,6 @@ export default function AuthLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body suppressHydrationWarning>{children}</body>
-    </html>
+    <main suppressHydrationWarning>{children}</main>
   );
 }

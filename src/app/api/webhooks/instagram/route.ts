@@ -26,16 +26,46 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+    console.log("Instagram webhook payload:", JSON.stringify(body, null, 2));
     
-    // Handle different types of webhooks
     if (body.object === "instagram" && body.entry) {
       for (const entry of body.entry) {
-        for (const change of entry.changes) {
-          // Handle message webhooks
-          if (change.field === "messages") {
-            // Process new messages
-            console.log("New message received:", change.value);
+        if (entry.messaging && Array.isArray(entry.messaging)) {
+          for (const messagingEvent of entry.messaging) {
+            console.log("Processing messaging event:", messagingEvent);
+            
+            const senderId = messagingEvent.sender?.id;
+            
+            if (messagingEvent.message) {
+              console.log("Message event from sender:", senderId);
+              if (messagingEvent.message.text) {
+                console.log("Text message:", messagingEvent.message.text);
+              }
+              if (messagingEvent.message.attachments) {
+                console.log("Message with attachments:", messagingEvent.message.attachments);
+              }
+            } 
+            else if (messagingEvent.reaction) {
+              console.log("Reaction event:", messagingEvent.reaction);
+            }
+            else if (messagingEvent.read) {
+              console.log("Message read event:", messagingEvent.read);
+            }
+            else if (messagingEvent.postback) {
+              console.log("Postback event:", messagingEvent.postback);
+            }
           }
+        }
+        else if (entry.changes && Array.isArray(entry.changes)) {
+          for (const change of entry.changes) {
+            console.log("Change event:", change);
+            if (change.field === "messages") {
+              console.log("Message-related change:", change.value);
+            }
+          }
+        }
+        else {
+          console.log("Unknown entry structure:", entry);
         }
       }
     }

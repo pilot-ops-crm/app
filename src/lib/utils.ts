@@ -13,3 +13,13 @@ export const arraysEqual = (a?: string[], b?: string[]) => {
   const sortedB = [...b].sort();
   return sortedA.every((val, i) => val === sortedB[i]);
 };
+
+export const isValidURL = (url: string) => {
+  if (!url) return false;
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};

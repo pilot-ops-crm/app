@@ -1,6 +1,6 @@
 import { UUID } from "crypto";
 
-export type User = {
+export interface User {
   id: UUID;
   email: string;
   name?: string | null;
@@ -20,43 +20,122 @@ export type User = {
   updated_at: string; // timestamp in ISO format
 };
 
-type InstagramParticipant = {
+export interface InstagramParticipant {
   username: string;
   id: string;
   profile_picture?: string;
 }
 
-export type InstagramConversation = {
+export interface InstagramConversation {
   id: string;
-  participants: {
+  unread_count?: number;
+  updated_time: string;
+  participants?: {
     data: InstagramParticipant[];
   };
-  updated_time: string;
+  messages?: {
+    data: InstagramMessage[];
+    paging?: {
+      cursors: {
+        before: string;
+        after: string;
+      };
+    };
+  };
 }
 
-export type Chat = {
+export interface Chat {
   id: string;
   username: string;
+  participantId: string;
   lastMessage: string;
   unreadCount: number;
-  avatar?: string;
 }
 
-export type InstagramMessageSender = {
+export interface InstagramMessage {
   id: string;
-  username?: string;
-}
-
-export type InstagramMessage = {
-  id: string;
-  message: string;
-  from: InstagramMessageSender;
+  from?: {
+    id: string;
+    username?: string;
+  };
+  message?: string;
   created_time: string;
+  attachments?: {
+    data: Array<{
+      mime_type?: string;
+      name?: string;
+      title?: string;
+      type?: string;
+      url?: string;
+      image_data?: {
+        url?: string;
+      };
+      video_data?: {
+        url?: string;
+      };
+      file_url?: string;
+      audio_url?: string;
+      asset_url?: string;
+    }>;
+  };
+  reactions?: {
+    data: Array<{
+      id: string;
+      username?: string;
+      reaction?: string;
+    }>;
+  };
 }
 
-export type Message = {
+export interface MessageAttachment {
+  image_data?: {
+    width?: number;
+    height?: number;
+    max_width?: number;
+    max_height?: number;
+    url?: string;
+    preview_url?: string;
+    animated_gif_url?: string;
+    animated_gif_preview_url?: string;
+    render_as_sticker?: boolean;
+  };
+  
+  video_data?: {
+    width?: number;
+    height?: number;
+    url?: string;
+    preview_url?: string;
+  };
+  
+  audio_data?: {
+    url?: string;
+    preview_url?: string;
+    duration?: number;
+  };
+  
+  file_data?: {
+    name?: string;
+    size?: number;
+    url?: string;
+  };
+  
+  type?: string;
+  payload?: {
+    url?: string;
+    title?: string;
+  };
+}
+
+export interface MessageReaction {
+  type: string;
+  sender: string;
+}
+
+export interface Message {
   id: string;
-  text: string;
-  sender: "me" | "them";
+  text?: string;
+  sender: string;
   timestamp: string;
+  attachments?: MessageAttachment[];
+  reactions?: MessageReaction[];
 }

@@ -3,7 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { PageHeader } from "@/components/page-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AuthCheck } from "@/components/auth-check";
-import '../globals.css'
+import "../globals.css";
 
 export const metadata: Metadata = {
   title: "App | Pilot - AI DM Assistant",
@@ -24,19 +24,15 @@ export default function RootLayout({
         } as React.CSSProperties
       }
     >
-      <html lang="en" suppressHydrationWarning>
-        <body suppressHydrationWarning>
-          <AuthCheck>
-            <section className="flex h-screen w-full">
-              <AppSidebar />
-              <SidebarInset className="border">
-                <PageHeader />
-                <main className="flex-1 overflow-y-auto p-6">{children}</main>
-              </SidebarInset>
-            </section>
-          </AuthCheck>
-        </body>
-      </html>
+      <AuthCheck>
+        <section className="flex h-screen w-full overflow-hidden" suppressHydrationWarning>
+          <AppSidebar />
+          <SidebarInset className="border">
+            <PageHeader />
+            <main className="flex-1 overflow-y-auto">{children}</main>
+          </SidebarInset>
+        </section>
+      </AuthCheck>
     </SidebarProvider>
   );
 }
